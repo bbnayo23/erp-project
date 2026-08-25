@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+storybook-static
+coverage
+pnpm-lock.yaml
+apps/erp-web/public/mockServiceWorker.js

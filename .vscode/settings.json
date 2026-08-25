@@ -1,0 +1,19 @@
+{
+  "$schema": "vscode://schemas/settings/folder",
+
+  // 에디터가 VS Code 내장 TypeScript 대신 워크스페이스에 고정된 5.9.3 을 쓰게 한다.
+  // 버전이 갈리면 CLI(pnpm typecheck)는 통과하는데 에디터에만 빨간줄이 뜨는 일이 생긴다.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // ESLint 확장은 기본적으로 JSON 을 검사하지 않는다.
+  // eslint.config.js 에 @eslint/json 설정을 넣었으므로 에디터에도 노출한다.
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "json",
+    "jsonc"
+  ]
+}

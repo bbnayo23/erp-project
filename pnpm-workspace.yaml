@@ -1,0 +1,11 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 10 은 의존성의 설치 스크립트를 기본 차단한다. 아래 둘은 실행돼야 한다.
+# - msw: package.json 의 msw.workerDirectory 를 보고 mockServiceWorker.js 를 자동 동기화한다.
+#        차단되면 msw 를 올렸을 때 워커 스크립트가 낡은 채로 남아 버전 불일치 경고가 난다.
+# - esbuild: 플랫폼별 바이너리를 설치한다.
+onlyBuiltDependencies:
+  - esbuild
+  - msw
