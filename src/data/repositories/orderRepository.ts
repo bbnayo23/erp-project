@@ -1,35 +1,18 @@
-import type { Order, OrderFilter } from '@/features/orders/types'
-import { sumBy } from '@/utils/number'
+import type { Order, OrderId } from '@/types'
 
 export const orderRepository = {
-  find(orders: readonly Order[], orderId: string): Order | undefined {
-    return orders.find((order) => order.id === orderId)
+  find(orders: readonly Order[], orderId: OrderId): Order | undefined {
+    return orders.find((order) => order.orderId === orderId)
   },
 
   replace(orders: readonly Order[], next: Order): Order[] {
-    return orders.map((order) => (order.id === next.id ? next : order))
+    return orders.map((order) => (order.orderId === next.orderId ? next : order))
   },
 
-  /** 키워드는 수주번호·고객명 양쪽을 본다 — 실무에서 둘 다로 찾는다 */
-  filter(orders: readonly Order[], filter: OrderFilter): Order[] {
-    const keyword = filter.keyword.trim().toLowerCase()
-
-    return orders.filter((order) => {
-      if (filter.status !== 'ALL' && order.status !== filter.status) return false
-      if (filter.warehouseId !== 'ALL' && order.warehouseId !== filter.warehouseId) return false
-      if (!keyword) return true
-      return (
-        order.code.toLowerCase().includes(keyword) ||
-        order.customerName.toLowerCase().includes(keyword)
-      )
-    })
-  },
-
-  totalAmount(order: Order): number {
-    return sumBy(order.lines, (line) => line.quantity * line.unitPrice)
-  },
-
-  totalQuantity(order: Order): number {
-    return sumBy(order.lines, (line) => line.quantity)
+  /** 06_주문 정상 품목 수량 합계 — 취소 품목은 세지 않는다 */
+  normalQuantity(order: Order): number {
+    return order.items
+      .filter((item) => item.status === '정상')
+      .reduce((acc, item) => acc + item.quantity, 0)
   },
 }

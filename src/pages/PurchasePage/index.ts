@@ -1,1 +1,0 @@
-export { PurchasePage } from './PurchasePage'

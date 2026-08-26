@@ -1,46 +1,57 @@
-/** 앱 전체에서 날짜는 'YYYY-MM-DD' 문자열로만 다룬다 — 타임존 착오를 원천 차단한다. */
-export type IsoDate = string
+import type { ISODateString } from '@/types'
+
+/**
+ * 날짜는 오프셋이 붙은 ISO 문자열로만 다룬다 — '2026-07-21T09:00:00+09:00'.
+ *
+ * 날짜 계산은 문자열의 날짜 부분만 UTC 로 옮긴 뒤 시각·오프셋을 그대로 되붙인다.
+ * Date 객체로 왕복시키면 실행 환경의 로컬 타임존이 끼어들어 하루가 밀린다.
+ */
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
-export function toIsoDate(date: Date): IsoDate {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
+/** '2026-07-21T09:00:00+09:00' → '2026-07-21' */
+export const dateOf = (iso: ISODateString): string => iso.slice(0, 10)
 
-export function today(): IsoDate {
-  return toIsoDate(new Date())
-}
+/** 날짜 부분을 뺀 나머지 — 'T09:00:00+09:00' */
+const timeOf = (iso: ISODateString): string => iso.slice(10)
 
-export function addDays(date: IsoDate, days: number): IsoDate {
+const toUtcMillis = (date: string): number => {
   const [year, month, day] = date.split('-').map(Number)
-  // UTC 로 계산해야 DST 경계에서 하루가 밀리지 않는다
-  const base = Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)
-  const shifted = new Date(base + days * 86_400_000)
-  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
+  return Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)
 }
 
-export function diffDays(from: IsoDate, to: IsoDate): number {
-  const parse = (value: IsoDate) => {
-    const [year, month, day] = value.split('-').map(Number)
-    return Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)
-  }
-  return Math.round((parse(to) - parse(from)) / 86_400_000)
+const fromUtcMillis = (millis: number): string => {
+  const d = new Date(millis)
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
-/** 기준일(기본 오늘)보다 이전이면 납기 초과 */
-export function isOverdue(dueDate: IsoDate, baseDate: IsoDate = today()): boolean {
-  return diffDays(baseDate, dueDate) < 0
+/** 시각과 오프셋은 유지하고 날짜만 옮긴다 */
+export function addDays(iso: ISODateString, days: number): ISODateString {
+  return fromUtcMillis(toUtcMillis(dateOf(iso)) + days * 86_400_000) + timeOf(iso)
 }
 
-/** 2026-08-26 → 2026.08.26 */
-export function formatDate(date: IsoDate | undefined | null): string {
-  if (!date) return '-'
-  return date.slice(0, 10).replace(/-/g, '.')
+/** 달력 날짜 기준 일수 차 (시각은 무시) */
+export function diffDays(from: ISODateString, to: ISODateString): number {
+  return Math.round((toUtcMillis(dateOf(to)) - toUtcMillis(dateOf(from))) / 86_400_000)
 }
 
-/** 납기까지 남은 일수를 사람이 읽는 문장으로 */
-export function formatDueLabel(dueDate: IsoDate, baseDate: IsoDate = today()): string {
-  const days = diffDays(baseDate, dueDate)
+/** 오프셋을 반영한 시각 비교. 정렬 comparator 로 그대로 쓸 수 있다. */
+export const compareIso = (a: ISODateString, b: ISODateString): number =>
+  Date.parse(a) - Date.parse(b)
+
+export const isBefore = (a: ISODateString, b: ISODateString): boolean => compareIso(a, b) < 0
+
+/** 2026-07-21T09:00:00+09:00 → 2026.07.21 */
+export const formatDate = (iso: ISODateString | undefined): string =>
+  iso ? dateOf(iso).replace(/-/g, '.') : '-'
+
+/** 2026-07-21T09:00:00+09:00 → 2026.07.21 09:00 */
+export const formatDateTime = (iso: ISODateString | undefined): string =>
+  iso ? `${formatDate(iso)} ${iso.slice(11, 16)}` : '-'
+
+/** 기준일 대비 납기 문장 */
+export function formatDueLabel(due: ISODateString, baseAt: ISODateString): string {
+  const days = diffDays(baseAt, due)
   if (days === 0) return '오늘'
   if (days > 0) return `${days}일 남음`
   return `${Math.abs(days)}일 초과`
