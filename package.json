@@ -1,6 +1,6 @@
 {
   "name": "erp-project",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.3",
@@ -8,30 +8,44 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @erp/web dev",
-    "storybook": "pnpm --filter @erp/design-system storybook",
-    "build": "pnpm --filter @erp/design-system build && pnpm --filter @erp/web build",
-    "build:storybook": "pnpm --filter @erp/design-system build-storybook",
-    "preview": "pnpm --filter @erp/web preview",
-    "typecheck": "pnpm -r --parallel typecheck",
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,html,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,html,yaml,yml}\"",
-    "test": "pnpm -r --parallel test",
-    "clean": "pnpm -r exec rimraf dist node_modules/.vite storybook-static"
+    "clean": "rimraf dist node_modules/.vite"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
+    "styled-components": "^6.5.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@eslint/json": "^2.0.1",
+    "@types/node": "^22.18.14",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
-    "eslint-plugin-storybook": "^10.5.10",
     "globals": "^17.11.0",
     "prettier": "^3.9.6",
     "rimraf": "^6.0.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "^8.68.0"
+    "typescript-eslint": "^8.68.0",
+    "vite": "^7.3.6"
+  },
+  "pnpm": {
+    "//": "pnpm 10 blocks dependency install scripts by default. esbuild needs its platform binary.",
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

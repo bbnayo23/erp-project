@@ -4,18 +4,10 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
-import storybook from 'eslint-plugin-storybook'
 
 export default tseslint.config(
   {
-    ignores: [
-      '**/dist/**',
-      '**/build/**',
-      '**/storybook-static/**',
-      '**/coverage/**',
-      '**/node_modules/**',
-      'apps/erp-web/public/mockServiceWorker.js',
-    ],
+    ignores: ['**/dist/**', '**/build/**', '**/coverage/**', '**/node_modules/**'],
   },
   {
     // JS 룰은 반드시 JS/TS 로 한정한다 — files 없이 두면 JSON 파일에도 적용돼
@@ -48,12 +40,12 @@ export default tseslint.config(
   },
   {
     /**
-     * 컴포넌트 라이브러리 성격의 파일들.
+     * 공통 컴포넌트·프로바이더 계층.
      * - styled.div 익스포트는 실제로 컴포넌트지만 룰이 인식하지 못한다
-     * - useToast / useThemeMode 처럼 훅을 프로바이더 옆에 두는 건 의도된 API 설계다
+     * - useThemeMode 처럼 훅을 프로바이더 옆에 두는 건 의도된 API 설계다
      * 피처·페이지 코드에는 룰을 그대로 남겨 실제 실수를 잡는다.
      */
-    files: ['packages/design-system/**/*.{ts,tsx}', 'apps/erp-web/src/shared/ui/**/*.tsx'],
+    files: ['src/components/**/*.tsx', 'src/app/providers/**/*.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
@@ -73,5 +65,4 @@ export default tseslint.config(
     plugins: { json },
     rules: json.configs.recommended.rules,
   },
-  ...storybook.configs['flat/recommended'],
 )

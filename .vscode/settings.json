@@ -1,7 +1,7 @@
 {
   "$schema": "vscode://schemas/settings/folder",
 
-  // 에디터가 VS Code 내장 TypeScript 대신 워크스페이스에 고정된 5.9.3 을 쓰게 한다.
+  // 에디터가 VS Code 내장 TypeScript 대신 프로젝트에 고정된 5.9.3 을 쓰게 한다.
   // 버전이 갈리면 CLI(pnpm typecheck)는 통과하는데 에디터에만 빨간줄이 뜨는 일이 생긴다.
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
