@@ -10,6 +10,7 @@
 ```bash
 pnpm install
 pnpm dev          # http://localhost:5173
+pnpm test         # 도메인 · 스토어 · 화면 테스트 (189개)
 pnpm typecheck
 pnpm lint
 pnpm build
@@ -17,9 +18,31 @@ pnpm build
 
 ## 현재 진행 상태
 
-타입 · 시드 · 도메인 계층까지 구현되어 있다. 화면(`pages/`, `features/`)과 스토어(`store/`)는
-다음 단계이며, 지금은 라우트가 `pages/PlaceholderPage` 한 장을 가리킨다.
-아래 구조에서 `features/` 와 `store/` 는 들어올 자리를 표시한 것이다.
+타입 · 시드 · 도메인 · 스토어와 화면까지 구현되어 있다. 재고 숫자를 바꾸는 모든 규칙이
+순수 함수로 있고 `pnpm test` 로 검증된다.
+
+시드를 넣고 돌리면 주문 29건 중 26건이 준비 대상으로 잡히고 네 상태가 모두 나온다.
+
+```
+READY 10   WAITING 5   SHORTAGE 8   EXCEPTION 3
+```
+
+배송 준비 현황(목록)과 주문 상세가 있고, 예약 · 예약 해제 · 출고 · 발주 · 품질검사 · 입고를
+화면에서 처리할 수 있다. 주문 하나를 열어 부족 → 발주 → 검사 → 입고 → 재판정 → 예약 →
+출고까지 한 바퀴 돌 수 있다.
+
+재고 화면과 발주 화면은 `pages/PlaceholderPage` 를 가리킨다.
+
+백엔드는 두지 않는다. 과제 가이드가 트랜잭션 · row lock · idempotency key 를 서버에서
+다루라고 하는 부분은 인메모리 구조로 옮겼다.
+
+| 서버 개념         | 이 프로젝트                                            |
+| ----------------- | ------------------------------------------------------ |
+| 트랜잭션 경계     | 스토어 액션 하나 — `set()` 한 번에 전체 대입           |
+| rollback          | 도메인 함수가 실패 시 입력을 그대로 반환               |
+| 최신 상태 재확인  | 액션이 `get()` 으로 현재 상태를 다시 읽고 판정         |
+| idempotency key   | `ProcessedRequest` 기록 (`domain/request/idempotency`) |
+| unique constraint | 입고 시 시리얼번호 중복 검사                           |
 
 ## 구조
 
@@ -34,16 +57,33 @@ src/
 ├── data/           시드 데이터 (seed) 와 컬렉션 접근 계층 (repositories)
 ├── store/          zustand 스토어 — 도메인 함수를 조립해 상태를 옮긴다
 ├── styles/         토큰 · 시맨틱 테마 · 전역 스타일
+├── tests/          도메인 · 스토어 · 화면 테스트 (Vitest)
 └── utils/          날짜 · 숫자 원시 함수
+```
+
+`domain/` 은 업무 단위로 나뉜다.
+
+```
+domain/
+├── master/         품목 · 창고 · 공급처 조회와 분류 판정
+├── order/          주문 접기 · 세트 전개 · 소요량 계산
+├── preparation/    준비 판정 — 배정 원장, 우선순위, 주문별 판정, 전체 계획
+├── inventory/      가용재고 · 예약 · 시리얼 피킹 · 출고 · 예약 해제
+├── purchase/       입고예정 잔여 · 부족분 · 발주 생성 · 입고 · 품질검사
+└── request/        요청 단위 멱등성 판정
 ```
 
 의존 방향은 한쪽으로만 흐른다.
 
 ```
-app → pages → features → { components, store } → { domain, data } → types
-                                                        ↓
-                                                      utils
+app → pages → features → { components, store } → domain → data → types
+                                                    ↓             ↑
+                                                  utils ──────────┘
 ```
+
+`domain/` 안에서는 `preparation` 이 가장 위에 있다 — 판정에는 품목 · 창고 · 재고 · 입고예정이
+모두 필요하다. 대신 `preparation/preparationRules` 는 타입만 import 하는 잎으로 떼어 두었다.
+`inventory/reserveOrder` 가 `canReserve` 하나 때문에 판정 로직 전체를 끌어오면 의존이 뒤엉킨다.
 
 `types/` 는 아무것도 import 하지 않는 잎이고, `domain/` 은 어떤 상위 계층도 모른다.
 순수 함수라서 브라우저 없이 실행·검증할 수 있다.
@@ -64,17 +104,18 @@ app → pages → features → { components, store } → { domain, data } → ty
 | `index.ts`   | 공개 API. 바깥에서는 항상 폴더 경로로만 import 한다 |
 
 ```
-components/common/Button/        pages/OrdersPage/
+components/common/Button/        pages/PreparationPage/
 ├── index.ts                     ├── index.ts
-├── Button.tsx                    ├── OrdersPage.tsx
-├── styled.ts                     ├── hooks.ts
-└── types.ts                      └── types.ts
+├── Button.tsx                   ├── PreparationPage.tsx
+├── styled.ts                    ├── hooks.ts
+└── types.ts                     ├── styled.ts
+                                 └── types.ts
 ```
 
 내용이 없는 파일은 만들지 않는다. 스타일이 없는 컴포넌트에 빈 `styled.ts` 를 두지 않는다.
 
-피처 단위도 같은 이름을 쓴다 — `features/inventory/{types,utils,hooks}.ts`. 폴더가 이미 맥락을
-말하므로 `inventory.types.ts` 처럼 접두사를 붙이지 않는다.
+피처 단위도 같은 이름을 쓴다 — `features/preparation/{types,utils,messages}.ts`. 폴더가 이미
+맥락을 말하므로 `preparation.types.ts` 처럼 접두사를 붙이지 않는다.
 
 `styled.ts` 는 JSX 를 담을 수 없으므로 아이콘은 `components/common/Icon` 한 곳에 모았다.
 GNB 의 메뉴 목록처럼 컴포넌트 전용 상수는 `constants.ts` 로 뺀다.
@@ -85,7 +126,7 @@ GNB 의 메뉴 목록처럼 컴포넌트 전용 상수는 `constants.ts` 로 뺀
 반환 형태를 고정한다. 페이지 `.tsx` 에는 `useState` 도 계산도 없다.
 
 ```tsx
-const { rows, filter, setFilter, summaryItems } = useInventoryPage()
+const { rows, filter, setFilter, summaryItems } = usePreparationPage()
 ```
 
 ## 데이터
@@ -109,40 +150,104 @@ const { rows, filter, setFilter, summaryItems } = useInventoryPage()
 
 ## 업무 규칙
 
-`00_안내` 시트의 규칙 8개가 그대로 도메인 함수가 된다.
+`00_안내` 시트의 규칙 8개와 과제 가이드가 더한 규칙이 그대로 도메인 함수가 된다.
 
-| 규칙                                           | 구현                                         |
-| ---------------------------------------------- | -------------------------------------------- |
-| 가용재고 = 현재고 - 예약수량                   | `domain/inventory/getAvailableQuantity.ts`   |
-| 주문 확정 상태의 정상 품목만 준비 대상         | `evaluateOrder` / `isPreparationTarget`      |
-| 세트는 구성품으로 풀고 서비스는 수요에서 제외  | `domain/order/expandBundle.ts`               |
-| 입고예정·검사 대기 수량은 아직 현재고가 아니다 | `domain/purchase/getRemainingQuantity.ts`    |
-| 부분 입고분은 이미 현재고, 잔여 = 계획 - 입고  | `getRemainingQuantity`                       |
-| 한 주문은 전량 준비 가능할 때만 예약한다       | `domain/inventory/reserveOrder.ts`           |
-| 발주를 만든 것만으로 현재고는 늘지 않는다      | `createIncomingDocument` / `receiveIncoming` |
-| 반복 처리에도 재고가 중복 반영되면 안 된다     | `Reservation` 기록 + 각 함수의 실패 코드     |
+| 규칙                                           | 구현                                           |
+| ---------------------------------------------- | ---------------------------------------------- |
+| 가용재고 = 현재고 - 예약수량                   | `domain/inventory/getAvailableQuantity.ts`     |
+| 주문 확정 상태의 정상 품목만 준비 대상         | `evaluateOrder` / `isPreparationTarget`        |
+| 세트는 구성품으로 풀고 서비스는 수요에서 제외  | `domain/order/expandBundle.ts`                 |
+| 입고예정·검사 대기 수량은 아직 현재고가 아니다 | `domain/purchase/getRemainingQuantity.ts`      |
+| 부분 입고분은 이미 현재고, 잔여 = 계획 - 입고  | `getRemainingQuantity`                         |
+| 배송일이 빠른 주문이 재고를 먼저 배정받는다    | `domain/preparation/planPreparation.ts`        |
+| 입고예정은 배송일 전날까지 들어와야 쓸 수 있다 | `isUsableBy`                                   |
+| 한 주문은 전량 준비 가능할 때만 예약한다       | `domain/inventory/reserveOrder.ts`             |
+| 발주를 만든 것만으로 현재고는 늘지 않는다      | `issueIncomingDocuments` / `receiveIncoming`   |
+| 입고 누적수량은 계획수량을 넘지 못한다         | `receiveIncoming` → `EXCEEDS_REMAINING`        |
+| 시리얼번호는 중복될 수 없다                    | `receiveIncoming` → `DUPLICATE_SERIAL`         |
+| 반복 처리에도 재고가 중복 반영되면 안 된다     | `domain/request/idempotency.ts` + 각 실패 코드 |
 
 ### 업무 흐름
 
 ```
 Order
-  ↓ groupOrderRows      06_주문 37행 → 주문 29건
-  ↓ expandBundle        세트 → 실물 품목, 서비스 제외
-  ↓ calculateDemand     정상 품목만, 수량 0 이하는 오류로 분리
-  ↓ evaluateOrder       READY / WAITING / SHORTAGE / INVALID
-  ↓ reserveOrder        READY 만. 개체는 FIFO 로 배정
-  ↓ shipOrder           현재고·예약 동시 차감, 개체 → 출고 완료
+  ↓ groupOrderRows        06_주문 37행 → 주문 29건
+  ↓ sortOrdersByPriority  배송예정일 → 주문접수일시
+  ↓ expandBundle          세트 → 실물 품목, 서비스 제외
+  ↓ calculateDemand       정상 품목만, 수량 0 이하는 오류로 분리
+  ↓ evaluateOrder         원장에서 배정 → READY / WAITING / SHORTAGE / EXCEPTION
+  ↓ reserveOrder          READY 만. 개체는 FIFO 로 배정
+  ↓ shipOrder             현재고·예약 동시 차감, 개체 → 출고 완료, 이력 생성
 ```
 
 부족하면 발주로 돌아간다.
 
 ```
-evaluateOrder
-  ↓ calculateShortage           품목 × 창고로 소요 합산
-  ↓ createIncomingDocument      생산품 → MO, 매입품 → PO
-  ↓ receiveIncoming             검사 통과 후 현재고 증가
-  ↓ evaluateOrder               WAITING → READY
+planPreparation
+  ↓ calculateShortage           계획의 부족분을 품목 × 창고로 합산
+  ↓ issueIncomingDocuments      생산품 → MO, 매입품 → PO
+  ↓ completeInspection          생산품은 검사를 통과해야 입고할 수 있다
+  ↓ receiveIncoming             현재고 증가, 시리얼 품목은 개체 생성
+  ↓ reevaluateWaitingOrders     WAITING → READY
 ```
+
+### 배송일이 빠른 주문이 먼저 배정받는다
+
+가장 틀리기 쉬운 규칙이다. 주문을 하나씩 따로 판정하면 같은 재고를 여러 주문이 각각 전부
+쓸 수 있다고 보게 된다 — 화면에는 '바로 준비 가능' 이 세 건인데 실제로는 한 건만 나간다.
+
+그래서 `planPreparation` 이 배정 원장(`AllocationLedger`)을 한 번만 만들고 배송일 순서대로
+물려준다. 앞선 주문이 배정한 현재고와 입고예정은 원장에서 빠지므로 뒤 주문이 다시 쓸 수 없다.
+
+```
+가용재고 1개, 두 주문이 각각 1개 필요
+
+ORD-EARLY (배송 07/22)  → READY      가용 1 → 1개 배정
+ORD-LATE  (배송 07/27)  → SHORTAGE   가용 0 → 부족 1
+```
+
+입고예정은 합계 하나로 들지 않고 문서별 잔여를 따로 추적한다. 사용 가능 여부가 주문마다
+다르기 때문이다 — 07/26 도착 예정 물량은 배송일 07/28 주문은 쓸 수 있지만 07/25 주문은
+쓸 수 없다. 합계로 뭉치면 이 구분이 사라진다.
+
+`evaluateOrder` 를 원장 없이 부르면 그 주문 하나만 있는 것처럼 판정한다. 목록 화면은 반드시
+`planPreparation` 을 거쳐야 한다.
+
+### EXCEPTION 은 재고를 잡지 않는다
+
+미등록 품목·사용 중지 창고·수량 오류·세트 구성 오류는 판정 자체가 불가능하다. 이때 정상
+품목까지 배정해 두면, 담당자가 데이터를 고쳐 다시 판정할 때 이미 자기 몫을 잡아버린 상태가
+되어 부족분이 실제보다 작게 나온다. 그래서 데이터 오류가 하나라도 있으면 원장을 건드리지
+않고 되돌린다.
+
+반대로 SHORTAGE 주문은 잡을 수 있는 만큼 붙들고 있어야 한다. 놓아버리면 배송일이 늦은
+주문이 가져가고, 발주가 도착해도 여전히 못 나간다.
+
+### 부족분은 계획에서 나온다
+
+`calculateShortage` 는 재고를 다시 읽지 않고 `planPreparation` 의 결과만 받는다.
+
+주문별 부족분을 그냥 더하면 틀린다 — 가용 1개를 두 주문이 각각 1개씩 원하면 주문별 부족은
+`0 + 0` 이지만 실제로는 1개가 모자라다. 반대로 재고를 여기서 다시 빼면 이미 배정된 몫을 두 번
+뺀다. 계획이 순차 배정으로 만들어졌으므로 각 주문의 부족분은 서로 겹치지 않는다. 그래서
+그냥 더하면 되고, 뺄 것이 남아 있지 않다.
+
+### 반복 요청은 한 번만 반영된다
+
+예약·출고·입고·발주 생성은 호출부가 만든 요청 ID 를 받고, 처리한 요청은 `ProcessedRequest`
+로 남는다. 같은 ID 로 다시 들어오면 `DUPLICATE_REQUEST` 로 되돌린다 — 실패지만 오류는
+아니다. 요청한 상태가 이미 이루어져 있다는 뜻이므로 화면은 에러로 띄우지 않는다.
+
+방어선은 동작마다 두 겹이다.
+
+| 동작 | 요청 ID             | 업무 규칙                       |
+| ---- | ------------------- | ------------------------------- |
+| 예약 | `DUPLICATE_REQUEST` | `ALREADY_RESERVED` (예약 기록)  |
+| 출고 | `DUPLICATE_REQUEST` | `NOT_RESERVED` (예약 소비)      |
+| 입고 | `DUPLICATE_REQUEST` | `EXCEEDS_REMAINING` (잔여 한도) |
+
+입고가 요청 ID 를 가장 필요로 한다. 예약은 `Reservation` 기록으로도 막히지만, 계획 10개
+문서에 3개를 두 번 넣으면 둘 다 정당한 부분 입고로 보인다 — 자연 키가 없다.
 
 ### 준비상태는 주문상태와 다른 축이다
 
@@ -154,12 +259,6 @@ evaluateOrder
 
 세 값이 동시에 성립한다. 그래서 `PreparationStatus` 는 `OrderStatus` 와 별도 타입이다.
 
-### 부족분은 주문별로 더하지 않는다
-
-가용재고 1개를 두 주문이 각각 1개씩 필요로 하면 주문별 부족은 `0 + 0` 이지만 실제로는
-1개가 모자라다. 그래서 `calculateShortage` 는 품목 × 창고 단위로 소요량을 먼저 합치고
-가용재고와 입고예정은 한 번만 뺀다.
-
 ### 예약은 주문별로 추적한다
 
 `04_재고현황` 의 `기존예약주문번호` 는 주문을 한 건만 적고 있어 누적 예약을 주문별로
@@ -168,6 +267,194 @@ evaluateOrder
 - 한 주문을 취소할 때 같은 품목을 예약한 다른 주문의 재고까지 풀린다.
 - 같은 주문을 두 번 처리하면 재고가 중복 차감된다.
 
-그래서 앱이 만드는 예약은 `Reservation` 엔티티로 기록한다. 이 기록이 곧 멱등성 판정
-근거다 — 같은 주문의 예약이 이미 있으면 `ALREADY_RESERVED` 로 되돌린다.
-시트에 없는 확장 엔티티이며, `IncomingDocument.relatedOrderId` 와 같은 성격이다.
+그래서 앱이 만드는 예약은 `Reservation` 엔티티로 기록한다. 같은 주문의 예약이 이미 있으면
+`ALREADY_RESERVED` 로 되돌린다 — 요청 ID 와는 다른 층의 방어선이다. 요청 ID 는 같은 버튼을
+두 번 누른 경우를, 이 기록은 다른 경로로 이미 예약된 주문을 막는다.
+
+출고는 예약을 소비하면서 처리하므로, 요청 ID 를 잃어버려도 두 번째 출고는 `NOT_RESERVED`
+로 막힌다. 대신 예약이 사라지므로 무엇을 어느 개체로 내보냈는지는 `Shipment` 이력에만 남는다.
+
+시트에 없는 확장 엔티티는 네 개다 — `Reservation`, `Shipment`, `ProcessedRequest`,
+그리고 `IncomingDocument.relatedOrderId`.
+
+## 테스트
+
+화면보다 도메인 로직과 숫자 정합성을 먼저 검증한다. Vitest 로 189개가 돈다.
+
+기본 환경은 `node` 다. 도메인은 순수 함수라 브라우저가 필요 없고, 화면 테스트만 파일 상단의
+`@vitest-environment jsdom` 으로 올린다 — 전부 jsdom 으로 돌리면 도메인 테스트가 느려진다.
+
+```bash
+pnpm test
+pnpm test:watch
+```
+
+| 파일                          | 검증하는 것                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| `tests/preparation/demand`    | 세트 전개 · 중첩 세트 · 서비스 제외 · 동일 품목 합산     |
+| `tests/preparation/cancelled` | 취소 품목 · 취소/완료 주문 · 취소 주문의 재고 미점유     |
+| `tests/preparation/status`    | 네 상태 판정 · 가용재고 · 입고예정 · 배송일 경계         |
+| `tests/preparation/priority`  | 배송일 순차 배정 · 문서별 입고예정 추적 · 예약된 주문    |
+| `tests/preparation/exception` | 예외 데이터 6종 · 재고 미점유                            |
+| `tests/inventory/reserve`     | All-or-Nothing · 시리얼 FIFO · 중복 예약                 |
+| `tests/inventory/ship`        | 현재고·예약 동시 차감 · 출고 이력 · 중복 출고            |
+| `tests/purchase/order`        | 부족분 합산 · PO/MO 분기 · 리드타임 · 발주 불가 사유     |
+| `tests/receiving/receive`     | 입고 한도 · 중복 입고 · 시리얼 생성/중복 · 품질검사      |
+| `tests/flow`                  | 주문 → 부족 → 발주 → 입고 → 재판정 → 예약 → 출고 한 바퀴 |
+| `tests/store/erpStore`        | 실제 시드로 돌린 스토어 액션 전체                        |
+| `tests/ui/PreparationPage`    | 목록 렌더 · 필터 · 요약 · 상세로 이동                    |
+| `tests/ui/OrderDetailPage`    | 품목 숫자 · 상태별 버튼 노출 · 예약/출고/발주/입고       |
+
+도메인 테스트는 시드 데이터를 쓰지 않는다. 29건의 주문이 얽힌 상태에서 한 규칙만 확인하려면
+무엇이 원인인지 좁힐 수 없고, 시드 한 줄을 고치면 무관한 테스트가 깨진다.
+`tests/fixtures.ts` 에서 검증하려는 규칙에 필요한 최소 행만 손으로 세운다.
+
+스토어 테스트는 반대다. 엑셀 8개 시트를 그대로 넣고 돌린다 — 시드가 도메인 함수의 전제를
+실제로 만족하는지, 액션이 컬렉션을 빠뜨리지 않고 옮기는지는 진짜 데이터로만 드러난다.
+
+테스트가 도메인 함수 결과를 DB 에 대입하는 `commit` 은 스토어 액션이 할 일을 대신하는
+것이다 — `set()` 한 번에 통째로 대입하는 모양이 실제 동작과 같다.
+
+## 스토어
+
+```ts
+const outcome = useErpStore.getState().reserve('ORD202607200016')
+// 실패하면 { ok: false, code: 'NOT_READY' }
+```
+
+액션 하나가 트랜잭션 경계다. 도메인 함수가 돌려준 컬렉션을 `set()` 한 번에 통째로 대입한다 —
+재고와 개체를 따로 두 번 대입하면 그 사이에 렌더가 끼어 04_재고현황과 05_개체재고가 어긋난
+중간 상태가 화면에 보인다. rollback 은 도메인 함수 쪽에 있어서, 실패해도 분기 없이 대입할 수
+있다.
+
+모든 액션은 `get()` 으로 현재 상태를 다시 읽고 계획을 새로 세운다. 화면이 보고 있던 재고를
+믿지 않는다는 뜻이다 (가이드 §11) — 목록을 띄워둔 사이 다른 주문이 예약을 잡았을 수 있다.
+
+실패 코드만 돌려주고 문구는 담지 않는다. 한글 문구는 `features/preparation/messages.ts` 가
+매핑한다. 스토어가 문구를 들면 같은 판정이 두 곳에 흩어진다.
+
+요청 ID 는 한 번만 일어나는 동작이면 주문번호에서 유도하고(`RESERVE:ORD-001`), 여러 번
+일어날 수 있는 동작(입고 · 발주)은 호출부가 넘긴다. 도메인 함수 안에서 만들면 매 호출이
+새 요청이 되어 멱등성이 성립하지 않는다.
+
+시각은 `baseAt` 을 쓴다. 04_재고현황의 기준시각이 이 데이터의 '오늘' 이므로, 실제 시계를
+섞으면 납기 계산과 이력의 시간축이 어긋난다.
+
+### 계획은 저장하지 않는다
+
+`usePreparationPlan` 이 필요한 컬렉션만 각각 고른 뒤 `useMemo` 로 묶는다. 셀렉터 안에서
+`planPreparation` 을 부르면 매 렌더마다 새 객체가 나와 zustand 가 상태가 바뀐 것으로 보고
+무한히 다시 그린다.
+
+스토어에 담지 않는 이유는 가용재고를 필드로 두지 않는 것과 같다. 갱신을 잊은 화면이 낡은
+판정을 보여주는 일이 구조적으로 불가능해야 한다.
+
+### 예약한 주문은 배정 경쟁에서 빠진다
+
+예약수량은 이미 다른 주문의 가용재고에서 빠져 있어 물량이 확보된 상태다. 그 주문을 다시
+원장에 넣으면 자기 예약 때문에 자기가 부족해진다 — 현재고 5 중 3을 예약하면 가용은 2 인데
+소요는 여전히 3 이라 SHORTAGE 가 되고, 있는 재고를 두고 발주가 나간다.
+
+그래서 예약 기록이 있으면 원장을 건드리지 않고 그 기록을 판정으로 옮긴다
+(`reservedPreparation`). 목록에서는 준비상태 대신 '예약 완료' 배지가 붙는다 — 상태는
+READY 지만 다음 행동이 예약이 아니라 출고이기 때문이다.
+
+## 화면
+
+```
+/orders             배송 준비 현황 — 우선순위대로 늘어놓은 목록
+/orders/:orderId    주문 상세 — 품목별 숫자와 모든 액션
+```
+
+페이지 `.tsx` 에는 재고 계산이 없다. 판정은 도메인이, 표시용 가공은 `hooks.ts` 와
+`features/preparation/utils.ts` 가 끝냈다 (가이드 §30).
+
+### 배송 준비 현황
+
+```
+순위 │ 배송예정일 │ 주문번호 │ 출고창고 │ 준비 품목 │ 부족 │ 준비상태
+```
+
+목록 순서가 곧 재고를 배정받은 순서다. 그래서 순위를 첫 칸에 둔다. 같은 품목을 원하는 두
+주문의 상태가 다른 이유가 이 순서다.
+
+준비상태 칸은 배지 아래에 한 줄을 더 둔다. 배지만으로는 다음 행동을 알 수 없다 — '입고 대기'
+는 기다리면 되고 '재고 부족' 은 발주해야 하는데, 무엇을 기다리는지 · 무엇이 모자라는지가
+있어야 판단할 수 있다.
+
+요약 카드는 필터와 무관하게 항상 전체를 센다. 필터를 걸 때마다 같이 움직이면 지금 걸린
+필터가 얼마나 걸러냈는지 알 수 없다.
+
+목록에는 액션 버튼이 없다. 예약과 발주는 품목별 숫자를 보고 눌러야 하는 판단이라 상세에 둔다.
+
+### 주문 상세
+
+```
+상품        필요  가용재고  입고예정  부족  상태
+─────────────────────────────────────────────────────
+매트리스 Q     2       2        0      0   바로 준비 가능
+프레임 Q       2       1        1      0   입고 대기 · 구매 입고 대기
+베개          10       0        0     10   재고 부족 · 구매발주 생성 대상
+```
+
+네 숫자를 나란히 둔다. 담당자가 `부족 = 필요 − 가용재고 − 입고예정` 을 직접 검산할 수 있어야
+발주 버튼을 신뢰할 수 있다. 가용재고는 창고 총량이 아니라 배송일이 앞선 주문이 가져간 몫을 뺀
+나머지다.
+
+버튼은 상태에 따라 감춘다 (가이드 §29). 비활성 버튼을 남기면 왜 안 되는지를 버튼에서 찾게
+되는데, 이유는 품목 표와 확인 필요 사유에 있다.
+
+| 상태           | 노출되는 버튼                      |
+| -------------- | ---------------------------------- |
+| 바로 준비 가능 | 예약                               |
+| 예약 완료      | 출고 · 예약 해제                   |
+| 재고 부족      | 부족분 발주 생성                   |
+| 입고 대기      | 없음 — 입고예정 표에서 검사 · 입고 |
+| 확인 필요      | 없음 — 사유만 표시                 |
+
+아래에 두 표가 더 붙는다.
+
+- **배정된 개체** — 예약이 FIFO 로 잡은 시리얼 번호. 다른 주문은 이 개체를 고를 수 없다.
+- **입고예정** — 이 주문이 기다리는 문서. 검사 대기면 `검사 통과`, 입고 가능하면 수량 입력과
+  `입고` 버튼이 나온다. 배송일을 못 맞추는 문서도 남기고 '배송일 이후 도착' 이라 표시한다 —
+  담당자가 알아야 하는 것은 '발주가 없다' 가 아니라 '있지만 늦게 온다' 다.
+
+### 발주는 주문별로 내지 않는다
+
+부족분은 품목 × 창고로 합산돼 있다. 상세에서 발주를 누르면 같은 품목을 기다리는 다른 주문의
+몫까지 한 번에 나간다. 주문마다 따로 내면 같은 부족분에 발주가 두 번 나가 재고가 남는다.
+
+버튼에 몇 건 몇 개가 나가는지 적는 이유다 — `부족분 발주 생성 (2건 12개)`.
+
+### 요청 토큰
+
+화면이 요청 ID 를 만들어야 하는 액션(발주 · 입고)은 성공한 뒤에만 올라가는 토큰을 쓴다.
+
+같은 버튼을 두 번 누르면 토큰이 같아 두 번째가 `DUPLICATE_REQUEST` 로 막히고, 담당자가
+일부러 다시 입고하는 경우에는 토큰이 올라가 정당한 새 요청이 된다. 시각이나 난수로 만들면
+이 구분이 사라진다.
+
+예약과 출고는 주문당 한 번이라 성공하면 버튼 자체가 사라진다 — 두 번 누를 길이 없다.
+
+## 가이드와 다르게 한 것
+
+| 가이드                                   | 이 프로젝트                           |
+| ---------------------------------------- | ------------------------------------- |
+| `WaitingReason` 을 한글 리터럴 타입으로  | 코드값 + 라벨 맵 (가이드 §30 원칙)    |
+| `[예약]` `[시리얼 피킹]` 버튼 분리       | 예약이 개체 배정까지 한 트랜잭션      |
+| `[구매발주 생성]` `[생산의뢰 생성]` 분리 | 버튼 하나, 품목유형이 문서구분을 정함 |
+
+**피킹을 예약에서 떼지 않은 이유.** 수량은 맞는데 배정할 개체가 모자라면 데이터가 어긋난
+상태다 (`SERIAL_SHORTAGE`). 예약만 먼저 반영하고 피킹을 나중에 하면 그 사이에 예약수량은
+늘었는데 개체는 없는 상태가 남는다. 전량 아니면 전무 규칙(§9.2)을 개체까지 밀어붙이려면 한
+트랜잭션이어야 한다. 배정 결과는 상세의 '배정된 개체' 표에서 확인한다.
+
+**발주 버튼을 합친 이유.** 한 주문의 부족분에 매입품과 생산품이 섞일 수 있다. 버튼을 나누면
+담당자가 두 번 눌러야 하고 한쪽을 잊을 수 있다. 어느 품목이 어떤 문서로 나갈지는 품목 표의
+상태 칸에 적어 누르기 전에 보이게 했다.
+
+## 아직 구현하지 않은 것
+
+- 재고 화면 · 발주 화면 (도메인과 스토어는 준비되어 있다)
+- 엑셀 업로드 · 배송 완료 처리
+- 사용 중지 창고 재고의 타 창고 통합 (과제 제외 범위)

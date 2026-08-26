@@ -1,0 +1,11 @@
+# 줄바꿈은 LF 로 고정한다.
+#
+# .editorconfig 와 prettier 가 이미 LF 를 쓰는데 git 은 그 둘을 읽지 않는다.
+# 이 파일이 없으면 core.autocrlf=true 인 환경에서 체크아웃할 때 CRLF 로 바뀌고,
+# prettier 를 한 번 돌리는 순간 손대지 않은 파일까지 전부 수정된 것으로 보인다.
+* text=auto eol=lf
+
+# 바이너리는 손대지 않는다
+*.png binary
+*.jpg binary
+*.xlsx binary

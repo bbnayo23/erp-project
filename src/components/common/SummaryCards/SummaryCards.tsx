@@ -6,9 +6,9 @@ import type { SummaryCardsProps } from './types'
  * 카드 하나만 쓰는 화면이 없어 그리드까지 한 컴포넌트로 둔다 — 화면마다 그리드를
  * 따로 조립하면 컬럼 규칙이 갈린다.
  */
-export function SummaryCards({ items, className }: SummaryCardsProps) {
+export function SummaryCards({ items, label, className }: SummaryCardsProps) {
   return (
-    <Grid className={className}>
+    <Grid className={className} aria-label={label}>
       {items.map((item) => (
         <Card key={item.label}>
           <Label>{item.label}</Label>

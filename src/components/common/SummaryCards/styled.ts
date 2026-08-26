@@ -1,14 +1,16 @@
 import styled from 'styled-components'
 import type { SummaryTone } from './types'
 
-export const Grid = styled.div`
+/** 지표 묶음은 목록이다 — 스크린리더가 '목록, 항목 5개' 로 읽어줘야 훑을 수 있다 */
+export const Grid = styled.ul`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: ${({ theme }) => theme.spacing[3]};
   margin-bottom: ${({ theme }) => theme.spacing[5]};
+  list-style: none;
 `
 
-export const Card = styled.div`
+export const Card = styled.li`
   padding: ${({ theme }) => theme.spacing[4]};
   background: ${({ theme }) => theme.colors.surface};
   border: ${({ theme }) => theme.borderWidth.thin} solid ${({ theme }) => theme.colors.border};

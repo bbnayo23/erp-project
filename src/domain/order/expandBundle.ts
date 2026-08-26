@@ -13,6 +13,8 @@ export interface ExpandBundleResult {
   excludedItemCodes: ItemCode[]
   /** 순환 참조로 전개를 중단한 세트 품목 */
   cyclicItemCodes: ItemCode[]
+  /** 02_세트구성에 구성품이 한 줄도 없는 세트 품목 */
+  emptyBundleItemCodes: ItemCode[]
 }
 
 interface Accumulator {
@@ -20,6 +22,7 @@ interface Accumulator {
   unknown: Set<ItemCode>
   excluded: Set<ItemCode>
   cyclic: Set<ItemCode>
+  emptyBundle: Set<ItemCode>
 }
 
 function walk(
@@ -55,6 +58,12 @@ function walk(
 
   const components = bundleComponents.filter((component) => component.bundleItemCode === itemCode)
 
+  // 구성이 비어 있으면 조용히 사라진다 — 소요량이 0 이 되어 준비 가능한 주문처럼 보인다
+  if (components.length === 0) {
+    acc.emptyBundle.add(itemCode)
+    return
+  }
+
   for (const component of components) {
     if (!component.isOutboundTarget) {
       acc.excluded.add(component.componentItemCode)
@@ -76,6 +85,7 @@ const toResult = (acc: Accumulator): ExpandBundleResult => ({
   unknownItemCodes: [...acc.unknown],
   excludedItemCodes: [...acc.excluded],
   cyclicItemCodes: [...acc.cyclic],
+  emptyBundleItemCodes: [...acc.emptyBundle],
 })
 
 const emptyAccumulator = (): Accumulator => ({
@@ -83,6 +93,7 @@ const emptyAccumulator = (): Accumulator => ({
   unknown: new Set(),
   excluded: new Set(),
   cyclic: new Set(),
+  emptyBundle: new Set(),
 })
 
 /**

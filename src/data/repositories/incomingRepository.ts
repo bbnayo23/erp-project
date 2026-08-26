@@ -28,9 +28,13 @@ export const incomingRepository = {
   /**
    * 새 문서번호. 같은 날 같은 품목으로 두 번 발주하면 접미 번호가 붙는다 —
    * 화면에서 두 문서를 구분할 수 없으면 입고 처리를 잘못 누른다.
+   *
+   * `documents` 는 문서번호만 읽는다. 한 번의 발주에서 여러 문서를 만들 때 호출부가
+   * 아직 저장되지 않은 번호까지 넘겨 충돌을 피할 수 있어야 한다 — 같은 품목이 창고만
+   * 달라도 기준 번호는 같다 (PIL-STD → PO-20260721-STD).
    */
   nextDocumentId(
-    documents: readonly IncomingDocument[],
+    documents: readonly Pick<IncomingDocument, 'documentId'>[],
     type: IncomingDocumentType,
     itemCode: ItemCode,
     orderedAt: string,

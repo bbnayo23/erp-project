@@ -15,7 +15,12 @@ export const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text};
 `
 
-export const Description = styled.p`
+/**
+ * div 다. description 은 ReactNode 라 문장 하나만 오는 게 아니다 — 주문 상세는 여기에
+ * 배송일·창고 같은 항목을 dl 로 넣는다. p 안에는 블록 요소를 넣을 수 없어 브라우저가
+ * 마크업을 끊고, 텍스트만 오는 경우와 렌더 결과가 달라진다.
+ */
+export const Description = styled.div`
   margin-top: 2px;
   font-size: ${({ theme }) => theme.font.size.sm};
   color: ${({ theme }) => theme.colors.textMuted};

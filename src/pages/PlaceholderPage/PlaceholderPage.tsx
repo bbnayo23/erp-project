@@ -1,32 +1,29 @@
+import { Link } from 'react-router-dom'
 import { Panel } from '@/components/common/Panel'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { List } from './styled'
 
 /**
- * 화면 구현 전 임시 페이지.
+ * 아직 만들지 않은 화면의 자리.
  *
- * 타입·시드·도메인 계층까지 먼저 확정하는 단계라 라우트는 이 한 장만 가리킨다.
- * 재고·수주·발주 화면이 붙으면 이 폴더는 사라진다.
+ * 재고·발주 경로가 이 한 장을 가리킨다. 수주(배송 준비 현황)는 구현되어 있고, 예약·출고·
+ * 발주·입고는 모두 그 안의 주문 상세에서 처리한다 — 업무가 주문 단위로 흐르기 때문이다.
  */
 export function PlaceholderPage() {
   return (
     <>
       <PageHeader
-        title="재고 흐름 ERP"
-        description="타입 · 시드 · 도메인 계층까지 구현된 상태입니다. 화면은 다음 단계입니다."
+        title="준비 중인 화면입니다"
+        description="지금은 수주 메뉴의 배송 준비 현황에서 전체 흐름을 처리할 수 있습니다."
       />
       <Panel>
         <div style={{ padding: 24 }}>
           <List>
-            <li>types/ — 엑셀 시트별 엔티티 타입 (+ reservation · preparation · dataset)</li>
-            <li>data/seed/ — 엑셀 8개 시트를 그대로 옮긴 시드</li>
-            <li>data/repositories/ — 문서번호 · 시리얼번호 생성</li>
-            <li>domain/master/ — 품목 · 창고 · 공급처 판정</li>
-            <li>domain/order/ — groupOrderRows · expandBundle · calculateDemand · evaluateOrder</li>
+            <li>재고 화면 — 창고별 현재고 · 예약수량 · 가용재고, 개체재고 조회</li>
+            <li>발주 화면 — 입고예정 문서 목록, 품질검사와 입고 처리</li>
             <li>
-              domain/inventory/ — getAvailableQuantity · reserveOrder · releaseOrder · shipOrder
+              주문 단위 처리는 <Link to="/orders">배송 준비 현황</Link> 에서 할 수 있습니다
             </li>
-            <li>domain/purchase/ — calculateShortage · createIncomingDocument · receiveIncoming</li>
           </List>
         </div>
       </Panel>

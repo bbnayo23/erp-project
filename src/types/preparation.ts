@@ -11,12 +11,12 @@ import type { DocumentId, ItemCode, OrderId, Quantity } from './common'
 export type PreparationStatus =
   /** 가용재고로 전량 채울 수 있다 */
   | 'READY'
-  /** 지금은 모자라지만 확정된 입고예정으로 채워진다 */
+  /** 지금은 모자라지만 배송일 전에 도착하는 확정 입고예정으로 채워진다 */
   | 'WAITING'
   /** 입고예정까지 더해도 모자라다 — 발주·생산의뢰가 필요하다 */
   | 'SHORTAGE'
-  /** 데이터가 준비 판정 자체를 할 수 없는 상태다 */
-  | 'INVALID'
+  /** 데이터가 준비 판정 자체를 할 수 없는 상태다 — 담당자 확인이 필요하다 */
+  | 'EXCEPTION'
 
 /** WAITING 인 이유 — 언제 풀릴지 판단하려면 무엇을 기다리는지 알아야 한다 */
 export type PreparationWaitingReason =
@@ -27,7 +27,12 @@ export type PreparationWaitingReason =
   /** 구매발주 입고 대기 */
   | 'PURCHASE'
 
-/** 준비를 막는 사유 — 코드로 두면 화면 문구와 판정 로직이 분리된다 */
+/**
+ * 준비를 막는 사유.
+ *
+ * 코드로 두면 판정 로직과 화면 문구가 분리된다. 문구를 손대도 판정이 흔들리지 않고,
+ * 테스트는 문구가 아니라 코드로 검증할 수 있다.
+ */
 export type PreparationBlockCode =
   /** 01_품목에 없는 품목코드 (UNKNOWN-SKU) */
   | 'UNKNOWN_ITEM'
@@ -41,6 +46,10 @@ export type PreparationBlockCode =
   | 'ORDER_NOT_CONFIRMED'
   /** 정상 품목이 하나도 없다 (전부 취소되었거나 서비스만 남음) */
   | 'NO_DEMAND'
+  /** 세트가 자기 자신을 품고 있어 전개할 수 없다 */
+  | 'BUNDLE_CYCLE'
+  /** 세트상품인데 02_세트구성에 구성품이 없다 */
+  | 'BUNDLE_EMPTY'
 
 export interface PreparationBlock {
   code: PreparationBlockCode
@@ -54,11 +63,23 @@ export interface PreparationItem {
   itemCode: ItemCode
   /** 세트를 푼 뒤의 실제 소요량 */
   requiredQuantity: Quantity
-  /** 현재고 - 예약수량 */
+
+  /**
+   * 이 주문 차례에 남아 있던 가용재고.
+   *
+   * 창고의 가용재고 총량이 아니다. 배송일이 앞선 주문이 이미 가져간 몫은 빠져 있다
+   * (planPreparation). 주문 하나만 단독으로 판정하면 창고 총량과 같아진다.
+   */
   availableQuantity: Quantity
-  /** 확정된 입고예정 잔여수량 */
+  /** 이 주문 차례에 남아 있던, 배송일 전에 도착하는 확정 입고예정 잔여수량 */
   incomingQuantity: Quantity
-  /** max(0, 소요량 - 가용재고) */
+
+  /** 이 주문이 가용재고에서 실제로 잡은 수량 */
+  allocatedFromStock: Quantity
+  /** 이 주문이 입고예정에서 실제로 잡은 수량 */
+  allocatedFromIncoming: Quantity
+
+  /** max(0, 소요량 - 가용재고 - 사용 가능한 입고예정) — 발주가 필요한 순수 부족분 */
   shortageQuantity: Quantity
 
   status: PreparationStatus

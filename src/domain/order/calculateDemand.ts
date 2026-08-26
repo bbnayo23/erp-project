@@ -10,6 +10,9 @@ export interface OrderDemand {
   excludedItemCodes: ItemCode[]
   /** 수량이 0 이하인 품목 — 데이터 오류다 */
   invalidQuantityItemCodes: ItemCode[]
+  /** 세트 구성 오류 — 순환 참조이거나 구성품이 비어 있다 */
+  cyclicItemCodes: ItemCode[]
+  emptyBundleItemCodes: ItemCode[]
 }
 
 /**
@@ -38,6 +41,8 @@ export function calculateOrderDemand(ctx: DemandContext, order: Order): OrderDem
     unknownItemCodes: expanded.unknownItemCodes,
     excludedItemCodes: expanded.excludedItemCodes,
     invalidQuantityItemCodes,
+    cyclicItemCodes: expanded.cyclicItemCodes,
+    emptyBundleItemCodes: expanded.emptyBundleItemCodes,
   }
 }
 

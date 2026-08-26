@@ -7,22 +7,33 @@ import type {
   ReservationLine,
   SerialInventory,
 } from '@/types'
-import { canReserve } from '@/domain/order/evaluateOrder'
 import { findItem, isSerialManaged } from '@/domain/master/itemRules'
+import { canReserve } from '@/domain/preparation/preparationRules'
+import { DUPLICATE_REQUEST, isProcessed, markProcessed } from '@/domain/request/idempotency'
 import { pickSerials } from './pickSerials'
 
 export type ReserveOrderContext = Pick<
   ErpDatabase,
-  'items' | 'inventories' | 'serials' | 'reservations'
+  'items' | 'inventories' | 'serials' | 'reservations' | 'processedRequests'
 >
 
 export type ReserveFailure =
+  /** 같은 요청 ID 가 이미 처리됐다 — 오류가 아니라 '이미 되어 있다' 는 뜻이다 */
+  | typeof DUPLICATE_REQUEST
   /** 준비 판정이 READY 가 아니다 — 부분 예약은 하지 않는다 */
   | 'NOT_READY'
-  /** 이미 이 주문의 예약이 있다 — 중복 처리 요청 */
+  /** 이미 이 주문의 예약이 있다 — 다른 요청 ID 로 들어온 중복 처리 */
   | 'ALREADY_RESERVED'
   /** 수량은 있는데 배정할 개체가 부족하다 — 재고현황과 개체재고가 어긋난 상태 */
   | 'SERIAL_SHORTAGE'
+
+export interface ReserveOrderInput {
+  order: Order
+  preparation: OrderPreparation
+  /** 예약 요청 ID — 같은 값으로 두 번 요청해도 예약수량은 한 번만 늘어난다 */
+  requestId: string
+  reservedAt: ISODateString
+}
 
 export interface ReserveOrderResult {
   ok: boolean
@@ -31,6 +42,7 @@ export interface ReserveOrderResult {
   inventories: ErpDatabase['inventories']
   serials: ErpDatabase['serials']
   reservations: ErpDatabase['reservations']
+  processedRequests: ErpDatabase['processedRequests']
   reservation?: Reservation
 }
 
@@ -41,20 +53,28 @@ export interface ReserveOrderResult {
  * 그래서 준비 판정이 READY 가 아니면 아무것도 건드리지 않는다.
  *
  * 같은 주문을 두 번 처리해도 재고가 중복 차감되면 안 된다 (00_안내 마지막 규칙).
- * 판정 근거는 Reservation 기록이다 — 04_재고현황의 예약수량만으로는 누구의 몫인지 알 수 없다.
+ * 근거는 두 겹이다.
+ *   - 요청 ID: 같은 버튼을 두 번 눌렀거나 재시도한 경우
+ *   - Reservation 기록: 다른 경로로 이미 예약된 주문인 경우
+ * 04_재고현황의 예약수량만으로는 어느 주문의 몫인지 알 수 없어 둘 다 필요하다.
+ *
+ * 예약은 현재고를 줄이지 않는다. 물건은 아직 창고에 있고, 다른 주문이 쓰지 못하게
+ * 잡아두는 것뿐이다. 실제 차감은 출고(shipOrder)에서 일어난다 (가이드 §25).
  */
 export function reserveOrder(
   ctx: ReserveOrderContext,
-  order: Order,
-  preparation: OrderPreparation,
-  reservedAt: ISODateString,
+  { order, preparation, requestId, reservedAt }: ReserveOrderInput,
 ): ReserveOrderResult {
   const unchanged = {
     inventories: ctx.inventories,
     serials: ctx.serials,
     reservations: ctx.reservations,
+    processedRequests: ctx.processedRequests,
   }
 
+  if (isProcessed(ctx.processedRequests, requestId)) {
+    return { ok: false, failure: DUPLICATE_REQUEST, ...unchanged }
+  }
   if (ctx.reservations.some((reservation) => reservation.orderId === order.orderId)) {
     return { ok: false, failure: 'ALREADY_RESERVED', ...unchanged }
   }
@@ -112,6 +132,7 @@ export function reserveOrder(
     inventories,
     serials,
     reservations: [...ctx.reservations, reservation],
+    processedRequests: markProcessed(ctx.processedRequests, requestId, 'RESERVE', reservedAt),
     reservation,
   }
 }

@@ -3,8 +3,10 @@ import type { IncomingDocument } from './incoming'
 import type { Inventory } from './inventory'
 import type { Item } from './item'
 import type { Order } from './order'
+import type { ProcessedRequest } from './request'
 import type { Reservation } from './reservation'
 import type { SerialInventory } from './serial'
+import type { Shipment } from './shipment'
 import type { Supplier } from './supplier'
 import type { Warehouse } from './warehouse'
 import type { ISODateString } from './common'
@@ -26,6 +28,10 @@ export interface ErpDatabase {
   suppliers: Supplier[]
   /** 앱이 만든 예약 — 시트에는 없다 */
   reservations: Reservation[]
+  /** 앱이 만든 출고 이력 — 시트에는 없다 */
+  shipments: Shipment[]
+  /** 재고를 바꾼 요청의 처리 이력 — 반복 요청을 막는 근거다 */
+  processedRequests: ProcessedRequest[]
   /** 04_재고현황 기준시각. 준비 판정과 납기 계산의 '오늘' 이다. */
   baseAt: ISODateString
 }
