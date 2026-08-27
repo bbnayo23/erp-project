@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
+import type { BadgeTone } from '@/components/common/Badge'
 
 export type ColumnAlign = 'left' | 'center' | 'right'
+
+/** 행 좌측 상태 레일의 색. 배지와 같은 톤 어휘를 쓴다 — 두 표시가 어긋나면 안 된다. */
+export type RowTone = BadgeTone
 
 export interface DataTableColumn<T> {
   /** row 객체의 키이거나, render 를 쓸 때는 임의의 고유 문자열 */
@@ -22,9 +26,21 @@ export interface DataTableProps<T> {
   emptyDescription?: string
   emptyAction?: ReactNode
   onRowClick?: (row: T, index: number) => void
+  /**
+   * 행 좌측에 상태 색 레일을 그린다.
+   *
+   * 배지를 읽지 않고도 어느 행이 손을 대야 하는 행인지 알 수 있어야 한다 — 26줄을
+   * 훑을 때 담당자는 글자를 읽지 않고 색으로 먼저 걸러낸다.
+   */
+  rowTone?: (row: T, index: number) => RowTone | undefined
   /** 현재 선택된 row key 집합 — 하이라이트에만 사용 */
   selectedKeys?: ReadonlySet<string>
-  /** 헤더 고정 (부모에 max-height 필요) */
+  /**
+   * 헤더를 고정한다. 표 자체가 스크롤 영역이 되므로 `maxHeight` 를 함께 넘겨야 한다
+   * (기본 640px). 페이지 스크롤에는 붙지 않는다 — Panel 이 내용을 클리핑하기 때문이다.
+   */
   stickyHeader?: boolean
+  /** stickyHeader 일 때 표 영역의 최대 높이 */
+  maxHeight?: string
   className?: string
 }

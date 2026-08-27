@@ -1,3 +1,3 @@
 export { Overlay } from './Overlay'
 export { useOverlay } from './hooks'
-export type { OverlayProps, UseOverlayOptions } from './types'
+export type { OverlayLayer, OverlayProps, UseOverlayOptions } from './types'

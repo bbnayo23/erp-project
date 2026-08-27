@@ -1,7 +1,6 @@
 import type {
   ISODateString,
   IncomingDocument,
-  IncomingDocumentType,
   Item,
   OrderPreparation,
   PreparationStatus,
@@ -10,6 +9,7 @@ import type {
   Supplier,
   Warehouse,
 } from '@/types'
+import type { RowTone } from '@/components/common/DataTable'
 import type { StatusDescriptor } from '@/components/common/StatusBadge'
 import type { SummaryCardItem } from '@/components/common/SummaryCards'
 import type { PreparationPlanEntry } from '@/domain/preparation/planPreparation'
@@ -22,6 +22,9 @@ import {
   isInspectionPending,
   isUsableBy,
 } from '@/domain/purchase/getRemainingQuantity'
+// 입고예정 문서의 표시 문구는 발주 피처가 단일 출처다 — 주문 상세와 발주 현황이
+// 같은 문서를 다른 이름으로 부르면 담당자가 두 화면을 잇지 못한다.
+import { DOCUMENT_TYPE_LABEL } from '@/features/purchase/utils'
 import { diffDays, formatDate, formatDueLabel } from '@/utils/date'
 import { sumBy } from '@/utils/number'
 import type {
@@ -30,6 +33,7 @@ import type {
   PreparationFilter,
   PreparationItemRow,
   PreparationRow,
+  PreparationStatusFilter,
 } from './types'
 
 /**
@@ -144,6 +148,8 @@ export function toPreparationRow(
 export const matchesFilter = (row: PreparationRow, filter: PreparationFilter): boolean => {
   if (filter.status !== 'ALL' && row.status !== filter.status) return false
   if (filter.warehouseCode !== 'ALL' && row.warehouseCode !== filter.warehouseCode) return false
+  if (filter.reserved === 'RESERVED' && !row.reserved) return false
+  if (filter.reserved === 'UNRESERVED' && row.reserved) return false
 
   const keyword = filter.keyword.trim().toUpperCase()
   if (keyword && !row.orderId.toUpperCase().includes(keyword)) return false
@@ -152,44 +158,108 @@ export const matchesFilter = (row: PreparationRow, filter: PreparationFilter): b
 }
 
 /**
+ * 요약 카드에서 표로 이어지는 선택.
+ * 카드 하나가 필터 한 조합에 1:1 로 대응해야 담당자가 '이 숫자의 8건' 을 바로 볼 수 있다.
+ */
+export interface SummarySelection {
+  status: PreparationStatusFilter
+  reserved: PreparationFilter['reserved']
+}
+
+const sameSelection = (a: SummarySelection, b: SummarySelection): boolean =>
+  a.status === b.status && a.reserved === b.reserved
+
+/**
  * 요약 카드.
  *
  * 세는 대상은 필터 이전의 전체다. 필터를 걸 때마다 요약이 같이 움직이면 지금 걸린
  * 필터가 얼마나 걸러냈는지 알 수 없다.
+ *
+ * `selection` 을 넘기면 카드가 필터 버튼이 된다. 예약 완료를 '바로 준비 가능' 카드의
+ * 힌트로 두지 않고 카드로 올린 이유도 이것이다 — 힌트는 누를 수 없다.
  */
-export function toSummaryItems(rows: readonly PreparationRow[]): SummaryCardItem[] {
+export function toSummaryItems(
+  rows: readonly PreparationRow[],
+  selection?: {
+    current: SummarySelection
+    onSelect: (next: SummarySelection) => void
+  },
+): SummaryCardItem[] {
   const countOf = (status: PreparationStatus) => rows.filter((row) => row.status === status).length
 
   const overdue = rows.filter((row) => row.overdue).length
   const reserved = rows.filter((row) => row.reserved).length
+  const readyUnreserved = rows.filter((row) => row.status === 'READY' && !row.reserved).length
+
+  const card = (
+    label: string,
+    value: string,
+    target: SummarySelection,
+    extra: Partial<SummaryCardItem> = {},
+  ): SummaryCardItem => ({
+    label,
+    value,
+    ...extra,
+    ...(selection
+      ? {
+          onSelect: () => selection.onSelect(target),
+          selected: sameSelection(selection.current, target),
+        }
+      : {}),
+  })
 
   return [
-    {
-      label: '준비 대상',
-      value: `${rows.length}건`,
-      ...(overdue > 0 ? { hint: `배송일 초과 ${overdue}건`, tone: 'danger' as const } : {}),
-    },
-    {
-      label: '바로 준비 가능',
-      value: `${countOf('READY')}건`,
-      ...(reserved > 0 ? { hint: `예약 완료 ${reserved}건` } : {}),
-    },
-    { label: '입고 대기', value: `${countOf('WAITING')}건`, tone: 'warning' },
-    {
-      label: '재고 부족',
-      value: `${countOf('SHORTAGE')}건`,
-      hint: '발주가 필요합니다',
-      tone: 'danger',
-    },
-    { label: '확인 필요', value: `${countOf('EXCEPTION')}건` },
+    card(
+      '준비 대상',
+      `${rows.length}건`,
+      { status: 'ALL', reserved: 'ALL' },
+      overdue > 0 ? { hint: `배송일 초과 ${overdue}건`, tone: 'danger' as const } : {},
+    ),
+    card(
+      '바로 준비 가능',
+      `${readyUnreserved}건`,
+      { status: 'READY', reserved: 'UNRESERVED' },
+      {
+        hint: '예약할 수 있습니다',
+      },
+    ),
+    card(
+      '예약 완료',
+      `${reserved}건`,
+      { status: 'ALL', reserved: 'RESERVED' },
+      {
+        hint: '출고할 수 있습니다',
+      },
+    ),
+    card(
+      '입고 대기',
+      `${countOf('WAITING')}건`,
+      { status: 'WAITING', reserved: 'ALL' },
+      {
+        tone: 'warning' as const,
+      },
+    ),
+    card(
+      '재고 부족',
+      `${countOf('SHORTAGE')}건`,
+      { status: 'SHORTAGE', reserved: 'ALL' },
+      {
+        hint: '발주가 필요합니다',
+        tone: 'danger' as const,
+      },
+    ),
+    card('확인 필요', `${countOf('EXCEPTION')}건`, { status: 'EXCEPTION', reserved: 'ALL' }),
   ]
 }
 
-/** 문서구분 → 화면 문구. 07_입고예정은 '구매'/'생산' 이지만 담당자는 발주서 이름으로 부른다. */
-export const DOCUMENT_TYPE_LABEL: Record<IncomingDocumentType, string> = {
-  구매: '구매발주',
-  생산: '생산의뢰',
-}
+/**
+ * 행 좌측 상태 레일의 색.
+ *
+ * 배지와 같은 톤을 쓴다. 예약 완료는 준비상태가 READY 지만 다음 행동이 다르므로
+ * 배지와 마찬가지로 레일도 따로 구분한다.
+ */
+export const rowToneOf = (row: PreparationRow): RowTone =>
+  row.reserved ? RESERVED_STATUS.tone : PREPARATION_STATUS[row.status].tone
 
 /** 부족한 품목이 어떤 문서로 발주될지 — 버튼을 누르기 전에 알아야 한다 */
 const issueNote = (item: Item | undefined): string => {

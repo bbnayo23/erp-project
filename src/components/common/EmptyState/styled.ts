@@ -23,8 +23,9 @@ export const Description = styled.p`
   max-width: 380px;
 `
 
+/** Root 의 gap 8px 에 이만큼만 더한다 — 문구와 버튼 사이는 한 단계 넓어야 한다 */
 export const Actions = styled.div`
-  margin-top: ${({ theme }) => theme.spacing[4]};
+  margin-top: ${({ theme }) => theme.spacing[2]};
   display: flex;
   gap: ${({ theme }) => theme.spacing[2]};
 `

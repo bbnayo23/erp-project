@@ -1,0 +1,1224 @@
+<title>재고 배정 원장</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  /* ── 라이트 팔레트가 기준. 다크는 아래에서 토큰만 다시 정의한다 ───────── */
+  :root {
+    --paper: #edeff2;
+    --surface: #ffffff;
+    --surface-sunk: #f5f7f9;
+    --ink: #15181c;
+    --ink-soft: #3d4650;
+    --ink-muted: #68727e;
+    --rule: #c7cfd8;
+    --rule-soft: #dde3e9;
+    --accent: #2a4b7c;
+    --accent-soft: #e4eaf3;
+    --ready: #1e6b4e;
+    --waiting: #8a6412;
+    --shortage: #a93b2e;
+    --exception: #55606e;
+    --shadow: 0 1px 2px rgba(21, 24, 28, 0.06), 0 8px 24px -12px rgba(21, 24, 28, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --paper: #101317;
+      --surface: #191d23;
+      --surface-sunk: #14181d;
+      --ink: #e7ecf1;
+      --ink-soft: #b7c1cc;
+      --ink-muted: #8593a1;
+      --rule: #2f3841;
+      --rule-soft: #232a31;
+      --accent: #7fa8db;
+      --accent-soft: #1c2836;
+      --ready: #63c194;
+      --waiting: #d6a545;
+      --shortage: #e88377;
+      --exception: #94a1af;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --paper: #101317;
+    --surface: #191d23;
+    --surface-sunk: #14181d;
+    --ink: #e7ecf1;
+    --ink-soft: #b7c1cc;
+    --ink-muted: #8593a1;
+    --rule: #2f3841;
+    --rule-soft: #232a31;
+    --accent: #7fa8db;
+    --accent-soft: #1c2836;
+    --ready: #63c194;
+    --waiting: #d6a545;
+    --shortage: #e88377;
+    --exception: #94a1af;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ── 기본 ─────────────────────────────────────────────────────────── */
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans KR', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: clamp(28px, 5vw, 72px) clamp(18px, 4vw, 48px) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(44px, 6vw, 76px);
+  }
+
+  .prose {
+    max-width: 68ch;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  p {
+    color: var(--ink-soft);
+  }
+
+  strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.88em;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 0.1em 0.36em;
+    color: var(--ink);
+  }
+
+  /* ── 표제 ─────────────────────────────────────────────────────────── */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: clamp(28px, 4vw, 44px);
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .stamp {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+
+  h1 {
+    font-family: 'Noto Serif KR', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 60px);
+    line-height: 1.14;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    max-width: 18ch;
+  }
+
+  .standfirst {
+    font-size: clamp(17px, 2.2vw, 20px);
+    line-height: 1.65;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    text-wrap: pretty;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+  }
+
+  .fact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 32px;
+    margin-right: 32px;
+    border-right: 1px solid var(--rule-soft);
+  }
+
+  .fact:last-child {
+    border-right: 0;
+    margin-right: 0;
+    padding-right: 0;
+  }
+
+  .fact dt {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .fact dd {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  /* ── 절 ───────────────────────────────────────────────────────────── */
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  h2 {
+    font-family: 'Noto Serif KR', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    max-width: 24ch;
+  }
+
+  h3 {
+    font-family: 'IBM Plex Sans KR', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--ink);
+  }
+
+  /* ── 핵심 주장 ────────────────────────────────────────────────────── */
+  .thesis {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 2px;
+    padding: clamp(22px, 3vw, 34px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .thesis .line {
+    font-family: 'Noto Serif KR', Georgia, serif;
+    font-size: clamp(19px, 2.6vw, 25px);
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  .thesis p {
+    max-width: 66ch;
+  }
+
+  /* ── 잘못된 계산 vs 맞는 계산 ─────────────────────────────────────── */
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-tag {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .panel.wrong .panel-tag {
+    color: var(--shortage);
+  }
+
+  .panel.right .panel-tag {
+    color: var(--ready);
+  }
+
+  .panel ol {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13.5px;
+    line-height: 1.9;
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    color: var(--ink-soft);
+  }
+
+  .panel li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px dashed var(--rule-soft);
+    padding: 3px 0;
+  }
+
+  .panel li:last-child {
+    border-bottom: 0;
+  }
+
+  .panel li b {
+    font-weight: 600;
+  }
+
+  .panel .verdict {
+    font-size: 13.5px;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  /* ── 파이프라인 ───────────────────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--rule);
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 44px minmax(150px, 220px) 1fr;
+    gap: 4px 20px;
+    padding: 16px 4px;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+
+  .step-no {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-fn {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  .step-what {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .step-what em {
+    font-style: normal;
+    color: var(--ink-muted);
+    font-size: 13.5px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* ── 표 ───────────────────────────────────────────────────────────── */
+  .scroller {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+  }
+
+  table {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  thead th {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-align: left;
+    padding: 10px 14px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+
+  thead tr.group th {
+    color: var(--accent);
+    border-bottom: 1px solid var(--rule-soft);
+    text-align: center;
+    padding-bottom: 4px;
+  }
+
+  thead tr.group th.blank {
+    border-bottom-color: transparent;
+  }
+
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    color: var(--ink-soft);
+    vertical-align: baseline;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .num {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .took {
+    background: var(--accent-soft);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .zero {
+    color: var(--ink-muted);
+  }
+
+  /* ── 상태 칩 ──────────────────────────────────────────────────────── */
+  .chip {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+
+  .chip.ready {
+    color: var(--ready);
+  }
+
+  .chip.waiting {
+    color: var(--waiting);
+  }
+
+  .chip.shortage {
+    color: var(--shortage);
+  }
+
+  .chip.exception {
+    color: var(--exception);
+  }
+
+  /* ── 원장 잔액 띠 ─────────────────────────────────────────────────── */
+  .balance {
+    display: grid;
+    grid-template-columns: minmax(110px, auto) 1fr;
+    gap: 10px 18px;
+    align-items: center;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 18px 20px;
+  }
+
+  .balance-label {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .balance-track {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    color: var(--ink-muted);
+  }
+
+  .balance-track b {
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    min-width: 30px;
+    text-align: center;
+    padding: 1px 6px;
+  }
+
+  .balance-track b.spent {
+    color: var(--ink-muted);
+    border-style: dashed;
+    background: transparent;
+  }
+
+  /* ── 공식 ─────────────────────────────────────────────────────────── */
+  .formula {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: clamp(15px, 2.2vw, 19px);
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 20px 22px;
+    text-align: center;
+    letter-spacing: 0.01em;
+  }
+
+  .formula span {
+    color: var(--accent);
+  }
+
+  /* ── 원칙 카드 ────────────────────────────────────────────────────── */
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .rule-card {
+    background: var(--surface);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .rule-card h3 {
+    font-size: 16px;
+  }
+
+  .rule-card p {
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+
+  .rule-card .bad {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--shortage);
+    line-height: 1.6;
+  }
+
+  /* ── 말하는 순서 ──────────────────────────────────────────────────── */
+  .script {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .script-col {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .script-col > .dur {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .script-col ol {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    counter-reset: beat;
+    list-style: none;
+  }
+
+  .script-col li {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 12px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+  }
+
+  .script-col li::before {
+    counter-increment: beat;
+    content: counter(beat);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    border-top: 2px solid var(--rule);
+    padding-top: 3px;
+  }
+
+  .script-col li b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.8;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>
+
+<div class="sheet">
+  <header class="masthead">
+    <div class="stamp">
+      <span>재고흐름 ERP 과제</span>
+      <span>기준시각 2026-07-21 09:00 KST</span>
+    </div>
+    <h1>재고 배정 원장</h1>
+    <p class="standfirst">
+      주문 26건이 같은 창고의 같은 재고를 놓고 경쟁한다. 무엇을 오늘 내보낼 수 있는지 정하는 계산이
+      이 프로젝트의 전부다. 화면은 그 계산을 보여주는 껍데기다.
+    </p>
+    <dl class="facts">
+      <div class="fact">
+        <dt>엑셀 시트</dt>
+        <dd>8</dd>
+      </div>
+      <div class="fact">
+        <dt>주문</dt>
+        <dd>29 → 26</dd>
+      </div>
+      <div class="fact">
+        <dt>대조한 셀</dt>
+        <dd>971</dd>
+      </div>
+      <div class="fact">
+        <dt>테스트</dt>
+        <dd>217</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">01 &nbsp;문제</div>
+    <h2>주문을 하나씩 판정하면 반드시 틀린다</h2>
+
+    <div class="thesis">
+      <div class="line">
+        가용재고 1개를 두 주문이 각각 1개씩 필요로 하면, 따로 계산했을 때 둘 다 “준비 가능”이
+        나온다. 실제로 나갈 수 있는 건 한 건이다.
+      </div>
+      <p>
+        이게 이 과제에서 가장 틀리기 쉬운 지점이고, 설명을 여기서 시작해야 하는 이유다. 재고 조회는
+        누구나 짤 수 있지만, <strong>여러 주문이 같은 재고를 나눠 갖는 순간</strong>
+        계산의 성격이 달라진다. 주문별 독립 계산은 화면에 “바로 준비 가능 3건”을 띄우고, 담당자는
+        3건을 약속한 뒤 1건만 내보내게 된다.
+      </p>
+    </div>
+
+    <div class="compare">
+      <div class="panel wrong">
+        <div class="panel-tag">주문마다 따로 계산</div>
+        <ol>
+          <li><span>ORD-A 가용재고 조회</span><b>2</b></li>
+          <li><span>ORD-B 가용재고 조회</span><b>2</b></li>
+          <li><span>ORD-C 가용재고 조회</span><b>2</b></li>
+        </ol>
+        <div class="verdict">
+          셋 다 “준비 가능”. 같은 2개를 세 번 약속했다. 재고는 아무도 건드리지 않았으니 조회할
+          때마다 2가 나온다.
+        </div>
+      </div>
+      <div class="panel right">
+        <div class="panel-tag">원장에서 순서대로 차감</div>
+        <ol>
+          <li><span>원장 개설</span><b>2</b></li>
+          <li><span>ORD-A 1개 배정</span><b>1</b></li>
+          <li><span>ORD-B 1개 배정</span><b>0</b></li>
+          <li><span>ORD-C 배정 불가</span><b>0</b></li>
+        </ol>
+        <div class="verdict">
+          A·B는 준비 가능, C는 부족. 앞 주문이 가져간 몫이 뒤 주문의 계산에 이미 반영돼 있다.
+        </div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>
+        그래서 판정 함수는 주문 하나를 받지 않는다. <strong>준비 대상 주문 전체를 한 번에</strong>
+        받아, 원장(<code>AllocationLedger</code>)을 한 번만 만들고 배송일 순서로 물려준다. 원장은
+        의도적으로 가변이다 — 순차 배정은 본질적으로 누적 상태이기 때문이다. 대신 수명을
+        <code>planPreparation()</code> 호출 하나 안으로 묶어, 바깥의 어떤 값도 바뀌지 않게 했다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">02 &nbsp;데이터 설계</div>
+    <h2>세 가지 원칙이 나머지를 결정했다</h2>
+
+    <div class="rules">
+      <div class="rule-card">
+        <h3>파생값은 저장하지 않는다</h3>
+        <p>
+          가용재고·잔여수량은 필드가 아니라 함수다. 현재고만 바꾸고 가용재고 갱신을 잊는 실수가
+          <strong>구조적으로 불가능</strong>해야 한다.
+        </p>
+        <p class="bad">✗ inventory.availableQuantity<br />✓ getAvailableQuantity(inventory)</p>
+      </div>
+      <div class="rule-card">
+        <h3>타입은 시트와 1:1</h3>
+        <p>
+          파일 하나가 시트 하나다. 엑셀을 다시 내보내도 같은 자리에 대응된다. 한글 상태값은 리터럴
+          유니온이라 시트에 없는 값을 쓰면 <strong>컴파일이 막는다</strong>.
+        </p>
+        <p class="bad">'작성 중' | '발주 확정' | '진행 중' | …</p>
+      </div>
+      <div class="rule-card">
+        <h3>규칙은 순수 함수로</h3>
+        <p>
+          재고 숫자를 바꾸는 모든 규칙이 React도 스토어도 모른다. 그래서 브라우저 없이 검증되고,
+          같은 입력에 <strong>항상 같은 판정</strong>이 나온다.
+        </p>
+        <p class="bad">domain/ → data/ → types/ (역방향 import 없음)</p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>
+        엑셀에서 손댄 것은 두 가지뿐이다. <strong>날짜</strong>는 엑셀 float 오차로 생긴
+        <code>15:59:59.999999</code> 꼬리를 초 단위로 반올림하고 타임존을 명시했다
+        (<code>16:00:00+09:00</code>). <strong>예/아니오</strong>는
+        시리얼관리여부·출고대상여부·확정여부 세 칸만 boolean으로 바꿨다. 나머지 한글 상태값은 화면에
+        그대로 나가므로 시트 값을 유지한다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">03 &nbsp;계산 파이프라인</div>
+    <h2>주문 한 건이 판정에 이르는 여섯 단계</h2>
+
+    <div class="prose">
+      <p>순서에 이유가 있다. 앞 단계가 뒤 단계의 전제를 만든다.</p>
+    </div>
+
+    <div class="pipeline">
+      <div class="step">
+        <div class="step-no">1</div>
+        <div class="step-fn">groupOrderRows</div>
+        <div class="step-what">
+          시트 37행을 주문 29건으로 접는다
+          <em>엑셀은 주문 하나를 품목별 여러 행으로 갖고 있다</em>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-no">2</div>
+        <div class="step-fn">isPreparationTarget</div>
+        <div class="step-what">
+          ‘주문 확정’ 26건만 남긴다
+          <em>취소·출고 완료·배송 완료를 판정에 넣으면 진짜 데이터 오류와 섞인다</em>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-no">3</div>
+        <div class="step-fn">sortOrdersByPriority</div>
+        <div class="step-what">
+          배송예정일 → 주문접수일시 → 주문번호
+          <em
+            >세 번째는 업무 규칙이 아니라 결정성을 위한 것. 동순위가 실행마다 달라지면 테스트도 재고
+            정합성도 믿을 수 없다</em
+          >
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-no">4</div>
+        <div class="step-fn">expandBundle</div>
+        <div class="step-what">
+          세트를 구성품으로 풀고 서비스를 뺀다
+          <em
+            >설치·수거는 재고 수요가 아니다. 구성이 비었거나 순환 참조면 조용히 버리지 않고 오류로
+            세운다 — 버리면 소요량 0이 되어 준비 가능한 주문처럼 보인다</em
+          >
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-no">5</div>
+        <div class="step-fn">allocate</div>
+        <div class="step-what">
+          원장에서 덜어낸다 — 가용재고 먼저, 모자란 만큼만 입고예정
+          <em>입고예정을 먼저 쓰면 지금 당장 나갈 수 있는 주문이 도착을 기다리게 된다</em>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-no">6</div>
+        <div class="step-fn">worstStatus</div>
+        <div class="step-what">
+          품목 중 가장 나쁜 상태가 주문의 상태
+          <em>한 품목이라도 부족하면 그 주문은 못 나간다</em>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">04 &nbsp;원장 배정 — 실제 숫자</div>
+    <h2>같은 품목, 같은 창고, 다른 판정</h2>
+
+    <div class="prose">
+      <p>
+        설명할 때 이 표 하나만 보여주면 된다. <code>MAT-Z10-Q</code>(Z10 매트리스 Q)를
+        <strong>본사물류창고</strong>에서 요구하는 주문 넷이다. 시트에 적힌 현재고는 3, 예약수량은
+        1이므로 가용재고는 2. 입고예정은 <code>MO-20260721-Z10</code> 2개가 07-22 도착 예정이다.
+      </p>
+    </div>
+
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr class="group">
+            <th class="blank" colspan="4"></th>
+            <th colspan="2">원장이 보여준 것</th>
+            <th colspan="2">이 주문이 가져간 것</th>
+            <th class="blank" colspan="2"></th>
+          </tr>
+          <tr>
+            <th>순위</th>
+            <th>주문번호</th>
+            <th>배송예정일</th>
+            <th class="num">필요</th>
+            <th class="num">가용재고</th>
+            <th class="num">입고예정</th>
+            <th class="num">재고에서</th>
+            <th class="num">예정에서</th>
+            <th class="num">부족</th>
+            <th>판정</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="num">4</td>
+            <td class="mono">ORD202607200001</td>
+            <td class="mono">07-22</td>
+            <td class="num">1</td>
+            <td class="num">2</td>
+            <td class="num zero">0</td>
+            <td class="num took">1</td>
+            <td class="num zero">0</td>
+            <td class="num zero">0</td>
+            <td><span class="chip ready">READY</span></td>
+          </tr>
+          <tr>
+            <td class="num">9</td>
+            <td class="mono">ORD202607200002</td>
+            <td class="mono">07-23</td>
+            <td class="num">1</td>
+            <td class="num">1</td>
+            <td class="num">2</td>
+            <td class="num took">1</td>
+            <td class="num zero">0</td>
+            <td class="num zero">0</td>
+            <td><span class="chip ready">READY</span></td>
+          </tr>
+          <tr>
+            <td class="num">10</td>
+            <td class="mono">ORD202607200007</td>
+            <td class="mono">07-23</td>
+            <td class="num">1</td>
+            <td class="num zero">0</td>
+            <td class="num">2</td>
+            <td class="num zero">0</td>
+            <td class="num took">1</td>
+            <td class="num zero">0</td>
+            <td><span class="chip waiting">WAITING</span></td>
+          </tr>
+          <tr>
+            <td class="num">25</td>
+            <td class="mono">ORD202607210029</td>
+            <td class="mono">07-27</td>
+            <td class="num">1</td>
+            <td class="num zero">0</td>
+            <td class="num">1</td>
+            <td class="num zero">0</td>
+            <td class="num took">1</td>
+            <td class="num zero">0</td>
+            <td><span class="chip waiting">WAITING</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="balance">
+      <div class="balance-label">가용재고 잔액</div>
+      <div class="balance-track">
+        <b>2</b><span>→</span><b>1</b><span>→</span><b class="spent">0</b><span>→</span
+        ><b class="spent">0</b>
+      </div>
+      <div class="balance-label">입고예정 잔여</div>
+      <div class="balance-track">
+        <b>2</b><span>→</span><b>2</b><span>→</span><b>1</b><span>→</span><b class="spent">0</b>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>
+        <strong>순위 4와 9는 같은 재고에서 1개씩 가져갔다.</strong> 두 번째 주문의 가용재고가 2가
+        아니라 1로 보이는 것이 원장의 전부다. 세 번째 주문에 오면 재고가 0이라 입고예정에서 당기고,
+        그래서 판정이 <span class="chip ready">READY</span>가 아니라
+        <span class="chip waiting">WAITING</span>이 된다 — 물건은 확보됐지만 아직 창고에 없다.
+      </p>
+      <h3>왜 첫 줄만 입고예정이 0인가</h3>
+      <p>
+        <code>MO-20260721-Z10</code>은 네 주문 모두에게 존재하지만, 순위 4에게는
+        <em>보이지 않는다</em>. 07-22에 도착하는 물량은 배송일이 07-22인 주문을 맞출 수 없기
+        때문이다. 입고 검수와 적치를 거쳐야 피킹할 수 있으므로
+        <strong>배송일 전날까지</strong> 들어와야 쓸 수 있다 (<code>isUsableBy</code>).
+      </p>
+      <p>
+        이 조건이 빠지면 배송일 뒤에 도착하는 발주까지 대기 근거로 잡혀서, 사실은 못 맞추는 주문이
+        ‘입고 대기’로 보인다. 발주가 나가야 할 주문이 조용히 묻히는 쪽이 훨씬 위험하다. 같은 이유로
+        입고예정은 합계 하나로 들지 않고 <strong>문서별 잔여</strong>를 따로 추적한다 — 사용 가능
+        여부가 주문마다 다르므로, 합계로 뭉치면 이 구분이 사라진다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">05 &nbsp;상태 판정</div>
+    <h2>네 가지 결론은 한 줄에서 갈린다</h2>
+
+    <div class="formula">부족 = 필요 <span>−</span> 가용재고 <span>−</span> 입고예정</div>
+
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th>상태</th>
+            <th>언제</th>
+            <th>담당자가 할 일</th>
+            <th class="num">시드 결과</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="chip ready">READY</span></td>
+            <td>가용재고만으로 전량 충당</td>
+            <td>예약 → 출고</td>
+            <td class="num">10건</td>
+          </tr>
+          <tr>
+            <td><span class="chip waiting">WAITING</span></td>
+            <td>부족은 0이지만 입고예정에서 당겼다</td>
+            <td>기다린다 — 검사·입고가 끝나면 자동으로 재판정</td>
+            <td class="num">5건</td>
+          </tr>
+          <tr>
+            <td><span class="chip shortage">SHORTAGE</span></td>
+            <td>원장을 다 긁어도 부족이 남는다</td>
+            <td>발주 — 부족수량이 곧 발주수량</td>
+            <td class="num">8건</td>
+          </tr>
+          <tr>
+            <td><span class="chip exception">EXCEPTION</span></td>
+            <td>판정 자체가 불가능</td>
+            <td>데이터를 고친다 — 자동 처리하지 않는다</td>
+            <td class="num">3건</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h3>EXCEPTION은 재고를 한 개도 잡지 않는다</h3>
+      <p>
+        미등록 품목·사용 중지 창고·수량 0·세트 구성 오류는 계산이 성립하지 않는 상태다. 이때
+        <strong>정상 품목까지 배정해 두면</strong>, 담당자가 데이터를 고쳐 다시 판정할 때 이미 자기
+        몫을 잡아버린 상태가 되어 부족분이 실제보다 작게 나온다. 그래서 오류가 하나라도 있으면
+        원장을 건드리지 않고 되돌린다.
+      </p>
+      <p>
+        같은 이유로 EXCEPTION 주문에는 품목별 숫자를 내지 않는다. 사용 중지 창고 주문에 ‘구창고에
+        5개 있음’을 같이 띄우면 낼 수 있다는 오해를 부른다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">06 &nbsp;상태 전이</div>
+    <h2>재고를 움직이는 여섯 동작이 각각 무엇을 바꾸는가</h2>
+
+    <div class="prose">
+      <p>
+        판정은 읽기만 한다. 숫자를 실제로 바꾸는 건 이 여섯 개뿐이고, 어느 칸이 움직이는지가 전부
+        다르다. <strong>이 표가 데이터 모델의 요약</strong>이다.
+      </p>
+    </div>
+
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th>동작</th>
+            <th>현재고</th>
+            <th>예약수량</th>
+            <th>개체상태 (05_개체재고)</th>
+            <th>문서 (07_입고예정)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">예약</td>
+            <td class="zero">그대로</td>
+            <td><b>+ 소요량</b></td>
+            <td>창고 보관 중 → 주문 배정됨</td>
+            <td class="zero">—</td>
+          </tr>
+          <tr>
+            <td class="mono">예약 해제</td>
+            <td class="zero">그대로</td>
+            <td><b>− 소요량</b></td>
+            <td>주문 배정됨 → 창고 보관 중</td>
+            <td class="zero">—</td>
+          </tr>
+          <tr>
+            <td class="mono">출고</td>
+            <td><b>− 소요량</b></td>
+            <td><b>− 소요량</b></td>
+            <td>주문 배정됨 → 출고 완료</td>
+            <td class="zero">—</td>
+          </tr>
+          <tr>
+            <td class="mono">발주</td>
+            <td class="zero">그대로</td>
+            <td class="zero">그대로</td>
+            <td class="zero">그대로</td>
+            <td><b>문서 생성</b> (PO / MO)</td>
+          </tr>
+          <tr>
+            <td class="mono">품질검사</td>
+            <td class="zero">그대로</td>
+            <td class="zero">그대로</td>
+            <td class="zero">그대로</td>
+            <td><b>검사상태 → 검사 완료</b></td>
+          </tr>
+          <tr>
+            <td class="mono">입고</td>
+            <td><b>+ 입고수량</b></td>
+            <td class="zero">그대로</td>
+            <td><b>신규 개체 생성</b></td>
+            <td><b>입고수량 누적</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p>
+        읽는 법 세 가지. <strong>예약은 현재고를 줄이지 않는다</strong> — 물건은 아직 창고에 있고,
+        다른 주문이 못 쓰게 잡아두는 것뿐이다. 실제 차감은 출고에서 일어난다.
+        <strong>발주는 아무 숫자도 바꾸지 않는다</strong> — 문서를 만든 것만으로 현재고는 늘지
+        않는다. <strong>입고만 현재고를 늘린다</strong>, 그리고 그것이 대기 중인 주문을 풀어주는
+        유일한 트리거다.
+      </p>
+      <p>
+        예약은 전량 아니면 전무다. 한 품목이라도 모자라면 아무것도 잡지 않는다. 수량은 맞는데 배정할
+        개체가 부족하면 04_재고현황과 05_개체재고가 어긋난 상태이므로, 절반만 반영하지 않고
+        <code>SERIAL_SHORTAGE</code>로 되돌린다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">07 &nbsp;중복 처리</div>
+    <h2>같은 요청이 두 번 와도 재고는 한 번만 움직인다</h2>
+
+    <div class="prose">
+      <p>
+        서버가 없는 프로젝트라 트랜잭션·row lock·idempotency key를 인메모리 구조로 옮겼다. 스토어
+        액션 하나가 트랜잭션 경계다 — 도메인 함수가 돌려준 컬렉션을
+        <code>set()</code> 한 번에 통째로 대입한다. 재고와 개체를 따로 두 번 대입하면 그 사이에
+        렌더가 끼어 04와 05가 어긋난 중간 상태가 화면에 보인다.
+      </p>
+      <p>
+        멱등성의 근거는 두 겹이다. 각 동작이 자기 상태만으로 중복을 막으면 빈틈이 생긴다 — 예약은
+        <code>Reservation</code> 기록으로 막히지만,
+        <strong>입고는 같은 문서에 3개를 두 번 넣어도 둘 다 정당한 부분 입고로 보인다.</strong>
+        그래서 요청 ID를 판정 근거로 따로 둔다.
+      </p>
+      <p>
+        요청 ID는 화면이 만든다. 성공한 뒤에만 올라가는 토큰이라, 같은 버튼을 두 번 누르면 토큰이
+        같아 두 번째가 막히고, 담당자가 일부러 다시 입고하는 경우에는 토큰이 올라가 정당한 새 요청이
+        된다. 시각이나 난수로 만들면 이 구분이 사라진다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="eyebrow">08 &nbsp;말하는 순서</div>
+    <h2>같은 내용을 3분과 15분으로</h2>
+
+    <div class="script">
+      <div class="script-col">
+        <div class="dur">3분 — 결론부터</div>
+        <ol>
+          <li>
+            <span
+              ><b>문제 한 문장.</b> “주문 26건이 같은 재고를 놓고 경쟁한다. 무엇을 오늘 내보낼 수
+              있는가를 정하는 계산이다.”</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>함정 하나.</b> 가용재고 1개, 두 주문이 각각 1개. 따로 계산하면 둘 다 준비 가능이
+              나온다.</span
+            >
+          </li>
+          <li>
+            <span><b>해법 한 줄.</b> 원장을 한 번 만들고 배송일 순서로 차감한다.</span>
+          </li>
+          <li>
+            <span
+              ><b>표 하나.</b> 04번 절의 네 줄. 가용재고가 2 → 1 → 0으로 깎이는 것만 짚는다.</span
+            >
+          </li>
+          <li>
+            <span><b>신뢰 근거.</b> 엑셀 971셀 대조, 테스트 217개.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="script-col">
+        <div class="dur">15분 — 설계 이유까지</div>
+        <ol>
+          <li><span>위 3분을 그대로 먼저 한다.</span></li>
+          <li>
+            <span
+              ><b>데이터 설계 3원칙.</b> 파생값 저장 안 함 · 시트와 1:1 · 순수 함수. 각각 “안 그러면
+              무슨 사고가 나는지”로 설명한다.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>파이프라인 6단계.</b> 순서에 이유가 있다는 것만 — 특히 가용재고를 입고예정보다
+              먼저 쓰는 이유.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>배송일 전날 규칙.</b> 04번 절의 첫 줄만 입고예정이 0인 이유. 이 디테일 하나가
+              업무를 이해했다는 신호다.</span
+            >
+          </li>
+          <li>
+            <span><b>상태 전이표.</b> 예약은 현재고를 안 줄인다 / 발주는 아무것도 안 바꾼다.</span>
+          </li>
+          <li>
+            <span><b>멱등성.</b> 왜 상태 기록만으로 부족하고 요청 ID가 따로 필요한가.</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="prose">
+      <h3>피해야 할 설명 순서</h3>
+      <p>
+        화면부터 보여주면 안 된다. 화면은 계산 결과를 늘어놓은 것이라, 보는 사람이 “재고 목록
+        만들었네”로 이해하고 끝난다. <strong>함정을 먼저 던지고 해법을 보여주는 순서</strong>여야
+        원장이 왜 필요한지가 전달된다. 폴더 구조 설명도 마지막이다 — 구조는 원칙의 결과이지 원칙이
+        아니다.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    수치는 모두 시드 데이터에서 실행해 확인한 값이다 · SEED_BASE_AT 2026-07-21T09:00:00+09:00 · pnpm
+    verify:seed → 971셀 불일치 없음 · pnpm test → 217 passed
+  </footer>
+</div>

@@ -50,6 +50,17 @@ export interface SemanticColors {
   primaryBorder: string
   onPrimary: string
 
+  /**
+   * 포인트 색 — '지금 이걸 하라' 한 곳에만 쓴다.
+   * 라임은 흰 배경에서 글자로 쓸 대비가 없으므로 배경으로만 쓰고 onPoint 를 글자색으로 올린다.
+   * 상태색(success/warning/danger)과 색상이 겹치지 않아 '급함' 과 '심각함' 이 구분된다.
+   */
+  point: string
+  pointHover: string
+  pointSubtle: string
+  pointBorder: string
+  onPoint: string
+
   success: string
   successSubtle: string
   successText: string
@@ -79,31 +90,37 @@ export interface ShadowScale {
 }
 
 const lightColors: SemanticColors = {
-  background: palette.gray[50],
+  background: palette.slate[50],
   surface: palette.white,
-  surfaceMuted: palette.gray[50],
-  surfaceHover: palette.gray[100],
-  surfaceSelected: palette.blue[50],
-  surfaceDisabled: palette.gray[100],
-  overlay: 'rgba(16, 24, 40, 0.55)',
+  surfaceMuted: palette.slate[50],
+  surfaceHover: palette.slate[100],
+  surfaceSelected: palette.navy[50],
+  surfaceDisabled: palette.slate[100],
+  overlay: 'rgba(12, 17, 32, 0.55)',
 
-  border: palette.gray[200],
-  borderStrong: palette.gray[300],
-  borderFocus: palette.blue[500],
+  border: palette.slate[200],
+  borderStrong: palette.slate[300],
+  borderFocus: palette.navy[500],
 
-  text: palette.gray[900],
-  textMuted: palette.gray[600],
-  textSubtle: palette.gray[500],
-  textDisabled: palette.gray[400],
+  text: palette.slate[900],
+  textMuted: palette.slate[600],
+  textSubtle: palette.slate[500],
+  textDisabled: palette.slate[400],
   textInverse: palette.white,
-  textLink: palette.blue[600],
+  textLink: palette.navy[600],
 
-  primary: palette.blue[600],
-  primaryHover: palette.blue[700],
-  primaryActive: palette.blue[800],
-  primarySubtle: palette.blue[50],
-  primaryBorder: palette.blue[200],
+  primary: palette.navy[600],
+  primaryHover: palette.navy[700],
+  primaryActive: palette.navy[800],
+  primarySubtle: palette.navy[50],
+  primaryBorder: palette.navy[200],
   onPrimary: palette.white,
+
+  point: palette.lime[400],
+  pointHover: palette.lime[300],
+  pointSubtle: palette.lime[50],
+  pointBorder: palette.lime[500],
+  onPoint: palette.navy[800],
 
   success: palette.green[600],
   successSubtle: palette.green[50],
@@ -124,31 +141,38 @@ const lightColors: SemanticColors = {
 }
 
 const darkColors: SemanticColors = {
-  background: palette.gray[950],
-  surface: palette.gray[900],
-  surfaceMuted: palette.gray[800],
-  surfaceHover: palette.gray[800],
-  surfaceSelected: 'rgba(21, 112, 239, 0.16)',
-  surfaceDisabled: palette.gray[800],
-  overlay: 'rgba(0, 0, 0, 0.65)',
+  background: palette.slate[950],
+  surface: palette.slate[900],
+  surfaceMuted: palette.slate[800],
+  surfaceHover: palette.slate[800],
+  surfaceSelected: 'rgba(127, 151, 216, 0.16)',
+  surfaceDisabled: palette.slate[800],
+  overlay: 'rgba(0, 0, 0, 0.68)',
 
-  border: palette.gray[800],
-  borderStrong: palette.gray[700],
-  borderFocus: palette.blue[400],
+  border: palette.slate[800],
+  borderStrong: palette.slate[700],
+  borderFocus: palette.navy[300],
 
-  text: palette.gray[50],
-  textMuted: palette.gray[300],
-  textSubtle: palette.gray[400],
-  textDisabled: palette.gray[600],
-  textInverse: palette.gray[900],
-  textLink: palette.blue[300],
+  text: palette.slate[50],
+  textMuted: palette.slate[300],
+  textSubtle: palette.slate[400],
+  textDisabled: palette.slate[600],
+  textInverse: palette.slate[900],
+  textLink: palette.navy[300],
 
-  primary: palette.blue[500],
-  primaryHover: palette.blue[400],
-  primaryActive: palette.blue[300],
-  primarySubtle: 'rgba(46, 144, 250, 0.14)',
-  primaryBorder: palette.blue[800],
-  onPrimary: palette.white,
+  // 다크 배경에서는 navy[600] 이 배경과 붙어 버려 한 단계 밝은 쪽을 primary 로 쓴다
+  primary: palette.navy[300],
+  primaryHover: palette.navy[200],
+  primaryActive: palette.navy[100],
+  primarySubtle: 'rgba(127, 151, 216, 0.16)',
+  primaryBorder: palette.navy[500],
+  onPrimary: palette.navy[900],
+
+  point: palette.lime[400],
+  pointHover: palette.lime[300],
+  pointSubtle: 'rgba(195, 245, 60, 0.14)',
+  pointBorder: palette.lime[600],
+  onPoint: palette.navy[900],
 
   success: palette.green[400],
   successSubtle: 'rgba(18, 183, 106, 0.14)',
@@ -170,11 +194,11 @@ const darkColors: SemanticColors = {
 
 const lightShadow: ShadowScale = {
   none: 'none',
-  xs: '0 1px 2px rgba(16, 24, 40, 0.05)',
-  sm: '0 1px 3px rgba(16, 24, 40, 0.10), 0 1px 2px rgba(16, 24, 40, 0.06)',
-  md: '0 4px 8px -2px rgba(16, 24, 40, 0.10), 0 2px 4px -2px rgba(16, 24, 40, 0.06)',
-  lg: '0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03)',
-  focus: '0 0 0 3px rgba(46, 144, 250, 0.28)',
+  xs: '0 1px 2px rgba(20, 28, 48, 0.05)',
+  sm: '0 1px 3px rgba(20, 28, 48, 0.10), 0 1px 2px rgba(20, 28, 48, 0.06)',
+  md: '0 4px 8px -2px rgba(20, 28, 48, 0.10), 0 2px 4px -2px rgba(20, 28, 48, 0.06)',
+  lg: '0 12px 16px -4px rgba(20, 28, 48, 0.10), 0 4px 6px -2px rgba(20, 28, 48, 0.04)',
+  focus: '0 0 0 3px rgba(42, 70, 147, 0.24)',
   focusDanger: '0 0 0 3px rgba(240, 68, 56, 0.28)',
 }
 
@@ -184,7 +208,7 @@ const darkShadow: ShadowScale = {
   sm: '0 1px 3px rgba(0, 0, 0, 0.50)',
   md: '0 4px 8px -2px rgba(0, 0, 0, 0.55)',
   lg: '0 12px 16px -4px rgba(0, 0, 0, 0.60)',
-  focus: '0 0 0 3px rgba(83, 177, 253, 0.35)',
+  focus: '0 0 0 3px rgba(127, 151, 216, 0.35)',
   focusDanger: '0 0 0 3px rgba(249, 112, 102, 0.35)',
 }
 

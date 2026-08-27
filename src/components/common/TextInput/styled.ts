@@ -6,6 +6,7 @@ export const Input = styled.input<{ $numeric: boolean }>`
   border-radius: ${({ theme }) => theme.radius.md};
   border: ${({ theme }) => theme.borderWidth.thin} solid ${({ theme }) => theme.colors.borderStrong};
   background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
   font-size: ${({ theme }) => theme.font.size.md};
 
   ${({ $numeric }) =>

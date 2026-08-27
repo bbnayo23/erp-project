@@ -25,7 +25,7 @@ export function Drawer({
   if (!open) return null
 
   return (
-    <Overlay align="end" onDismiss={closeOnOverlayClick ? onClose : undefined}>
+    <Overlay align="end" layer="drawer" onDismiss={closeOnOverlayClick ? onClose : undefined}>
       <Panel
         ref={panelRef}
         tabIndex={-1}

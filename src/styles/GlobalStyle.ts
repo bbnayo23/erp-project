@@ -13,6 +13,15 @@ export const GlobalStyle = createGlobalStyle`
     height: 100%;
   }
 
+  /*
+   * 네이티브 컨트롤에 테마를 알려준다.
+   * 이게 없으면 다크 모드에서 select 의 옵션 목록·날짜 피커·autofill 배경·기본
+   * 스크롤바가 라이트로 렌더된다 — 앱은 어두운데 드롭다운만 흰 상태가 된다.
+   */
+  html {
+    color-scheme: ${({ theme }) => (theme.mode === 'dark' ? 'dark' : 'light')};
+  }
+
   body {
     margin: 0;
     background: ${({ theme }) => theme.colors.background};
@@ -50,6 +59,12 @@ export const GlobalStyle = createGlobalStyle`
   textarea {
     font: inherit;
     color: inherit;
+  }
+
+  /* 체크박스·라디오·진행률 등 네이티브 위젯의 강조색 */
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: ${({ theme }) => theme.colors.primary};
   }
 
   button {

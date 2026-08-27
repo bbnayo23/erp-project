@@ -103,4 +103,9 @@ export interface PreparationFilter {
   warehouseCode: string
   /** 주문번호 부분 일치 */
   keyword: string
+  /**
+   * 예약 여부. 준비상태와 다른 축이라 따로 둔다 — 예약 완료 주문은 준비상태가 READY 지만
+   * 다음 행동이 예약이 아니라 출고다. 'ALL' 이면 구분하지 않는다.
+   */
+  reserved: 'ALL' | 'RESERVED' | 'UNRESERVED'
 }

@@ -1,7 +1,10 @@
 import type { ISODateString } from '@/types'
+import type { RowTone } from '@/components/common/DataTable'
 import type { SelectOption } from '@/components/common/Select'
 import type { SummaryCardItem } from '@/components/common/SummaryCards'
+import type { TourStep } from '@/components/common/Tour'
 import type { PreparationFilter, PreparationRow } from '@/features/preparation/types'
+import type { WorkflowGuideModel, WorkflowStep } from '@/features/workflow'
 
 /**
  * usePreparationPage 의 반환 형태.
@@ -22,10 +25,23 @@ export interface PreparationPageState {
   filtered: boolean
 
   statusOptions: SelectOption[]
+  reservedOptions: SelectOption[]
   warehouseOptions: SelectOption[]
 
-  /** 요약은 항상 전체를 센다 */
+  /** 요약은 항상 전체를 센다. 누르면 그 지표로 표가 걸러진다. */
   summaryItems: SummaryCardItem[]
+  /** 행 좌측 상태 레일 — 배지를 읽지 않고도 훑을 수 있어야 한다 */
+  rowTone: (row: PreparationRow) => RowTone
+
+  /** 화면을 열었을 때 무엇부터 할지 */
+  guide: WorkflowGuideModel
+  selectStep: (step: WorkflowStep) => void
+
+  /** 볼 곳에 스포트라이트를 얹는 화면 안내 — 처음 열었을 때 한 번 자동으로 뜬다 */
+  tourSteps: TourStep[]
+  tourOpen: boolean
+  openTour: () => void
+  closeTour: () => void
 
   /** 04_재고현황 기준시각 — 화면에 '기준' 으로 표시한다 */
   baseAt: ISODateString

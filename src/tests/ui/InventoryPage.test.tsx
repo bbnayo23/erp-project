@@ -1,0 +1,298 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { AppProviders } from '@/app/providers'
+import { InventoryPage } from '@/pages/InventoryPage'
+import { useErpStore } from '@/store/erpStore'
+import { findInventory } from '@/domain/inventory/getAvailableQuantity'
+import { planPreparation } from '@/domain/preparation/planPreparation'
+import { toStockRows } from '@/features/inventory/utils'
+
+/**
+ * 재고 현황의 렌더와 개체재고 조회.
+ *
+ * 재고를 바꾸는 버튼이 없는 화면이라 이 테스트가 지키는 것은 숫자가 정확히 옮겨지는지와,
+ * 다른 화면과 어긋나 보이는 지점을 화면이 스스로 설명하는지다 — 이 화면의 가용재고는
+ * 창고 총량이고 주문 상세의 가용재고는 선행 주문 몫을 뺀 나머지다.
+ */
+describe('InventoryPage', () => {
+  const state = () => useErpStore.getState()
+
+  /** 선행 예약이 걸린 시리얼 관리 품목 (현재고 3 · 예약 1) */
+  const SERIAL_ITEM = 'MAT-Z10-Q'
+  const HQ = 'WH-HQ'
+
+  const renderPage = () =>
+    render(
+      <MemoryRouter initialEntries={['/inventory']}>
+        <InventoryPage />
+      </MemoryRouter>,
+      { wrapper: AppProviders },
+    )
+
+  const stockTable = () => screen.getAllByRole('table')[0] as HTMLElement
+
+  const bodyRows = () => within(stockTable()).getAllByRole('row').slice(1)
+
+  const rowOf = (itemCode: string, warehouseName: string) => {
+    const row = bodyRows().find(
+      (candidate) =>
+        within(candidate).queryByText(new RegExp(itemCode)) &&
+        within(candidate).queryByText(warehouseName),
+    )
+    if (!row) throw new Error(`${itemCode} / ${warehouseName} 행을 찾을 수 없다`)
+    return row
+  }
+
+  const allRows = () => toStockRows(state())
+
+  beforeEach(() => {
+    state().reset()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('품목 × 창고가 한 줄씩 그려진다', () => {
+    renderPage()
+
+    const expected = allRows().length
+
+    expect(screen.getByText('재고 현황')).toBeInTheDocument()
+    expect(bodyRows()).toHaveLength(expected)
+    expect(screen.getByText(`전체 ${expected}건`)).toBeInTheDocument()
+  })
+
+  it('현재고 · 예약 · 가용재고를 나란히 보여준다', () => {
+    renderPage()
+
+    const inventory = findInventory(state().inventories, SERIAL_ITEM, HQ)
+    if (!inventory) throw new Error('시드에 MAT-Z10-Q / WH-HQ 재고가 없다')
+
+    const cells = within(rowOf(SERIAL_ITEM, '본사물류창고')).getAllByRole('cell')
+
+    // 품목 · 창고 다음이 현재고 · 예약 · 가용재고다
+    expect(cells[2]).toHaveTextContent(String(inventory.currentQuantity))
+    expect(cells[3]).toHaveTextContent(String(inventory.reservedQuantity))
+    expect(cells[4]).toHaveTextContent(
+      String(inventory.currentQuantity - inventory.reservedQuantity),
+    )
+  })
+
+  /**
+   * 이 화면의 가용재고는 창고 총량이고, 주문 상세의 가용재고는 배송일이 앞선 주문이
+   * 가져간 몫을 뺀 나머지다. 같은 이름의 두 숫자가 어긋나 보일 수 있으므로 화면이
+   * 기준을 밝혀야 한다.
+   */
+  it('가용재고의 기준을 머리말에 밝힌다', () => {
+    renderPage()
+
+    expect(screen.getByText(/창고 총량 기준/)).toBeInTheDocument()
+    expect(screen.getByText(/배송일이 앞선 주문이 가져간 몫/)).toBeInTheDocument()
+    expect(screen.getByText(/2026\.07\.21 09:00/)).toBeInTheDocument()
+  })
+
+  it('사용 중지 창고의 재고도 감추지 않는다', () => {
+    renderPage()
+
+    // WH-LEGACY 는 재고와 개체가 남아 있지만 출고 준비 대상이 아니다. 숨기면 담당자가
+    // 창고 합계와 화면 합계가 왜 다른지 알 수 없다.
+    const row = rowOf(SERIAL_ITEM, '구창고(비활성)')
+    expect(within(row).getByText('사용 중지')).toBeInTheDocument()
+  })
+
+  /**
+   * 아직 그 창고에 없는 품목을 발주하면 04_재고현황에는 행이 생기지 않는다. 입고해야
+   * 생긴다. 그 사이 재고 화면이 아무것도 보여주지 않으면 담당자는 발주가 사라진 줄 안다.
+   */
+  it('재고 행이 없어도 확정된 입고예정이 있으면 한 줄로 선다', () => {
+    // 제로 베개는 8창고·청주에만 있다. 본사물류창고로 새로 발주한다.
+    expect(findInventory(state().inventories, 'PIL-ZERO', HQ)).toBeUndefined()
+
+    const outcome = state().issueIncoming(
+      [
+        {
+          itemCode: 'PIL-ZERO',
+          warehouseCode: HQ,
+          requiredQuantity: 5,
+          shortageQuantity: 5,
+          orderIds: [],
+        },
+      ],
+      'TEST:ISSUE:PIL-ZERO',
+    )
+    expect(outcome.ok).toBe(true)
+
+    renderPage()
+
+    const row = rowOf('PIL-ZERO', '본사물류창고')
+    const cells = within(row).getAllByRole('cell')
+
+    expect(cells[2]).toHaveTextContent('0')
+    expect(cells[5]).toHaveTextContent('5')
+    expect(within(row).getByText('입고 예정')).toBeInTheDocument()
+  })
+
+  it('요약 카드가 전체 합계를 보여준다', () => {
+    renderPage()
+
+    const summary = screen.getByRole('list', { name: '재고 요약' })
+
+    for (const label of ['품목 × 창고', '현재고', '예약수량', '가용재고', '배정 가능']) {
+      expect(within(summary).getByText(label)).toBeInTheDocument()
+    }
+    expect(within(summary).getByText(`${allRows().length}건`)).toBeInTheDocument()
+  })
+
+  /**
+   * 합계 카드는 걸러낼 대상이 아니라 총량이다. 버튼으로 두면 눌러도 아무 일이 없는
+   * 자리가 생기므로 상태 카드만 누를 수 있어야 한다.
+   */
+  it('상태 카드만 필터 버튼이 된다', () => {
+    renderPage()
+
+    const summary = screen.getByRole('list', { name: '재고 요약' })
+    const names = within(summary)
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '')
+
+    expect(names.some((name) => name.includes('배정 가능'))).toBe(true)
+    expect(names.some((name) => name.includes('예약수량'))).toBe(false)
+  })
+
+  it('요약 카드를 누르면 그 상태만 남고, 다시 누르면 풀린다', () => {
+    renderPage()
+
+    const summary = screen.getByRole('list', { name: '재고 요약' })
+    const card = within(summary)
+      .getAllByRole('button')
+      .find((button) => (button.textContent ?? '').includes('배정 가능'))
+    if (!card) throw new Error('배정 가능 카드를 찾을 수 없다')
+
+    fireEvent.click(card)
+    expect(bodyRows()).toHaveLength(allRows().filter((row) => row.level === 'AVAILABLE').length)
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(card)
+    expect(bodyRows()).toHaveLength(allRows().length)
+  })
+
+  describe('필터', () => {
+    it('재고 상태로 좁힌다', () => {
+      renderPage()
+
+      fireEvent.change(screen.getByLabelText('재고 상태'), { target: { value: 'AVAILABLE' } })
+
+      const expected = allRows().filter((row) => row.level === 'AVAILABLE').length
+      expect(bodyRows()).toHaveLength(expected)
+      expect(screen.getByText(`${expected}건 / 전체 ${allRows().length}건`)).toBeInTheDocument()
+    })
+
+    it('창고로 좁힌다', () => {
+      renderPage()
+
+      fireEvent.change(screen.getByLabelText('창고'), { target: { value: 'WH-LEGACY' } })
+
+      const expected = allRows().filter((row) => row.warehouseCode === 'WH-LEGACY').length
+      expect(bodyRows()).toHaveLength(expected)
+    })
+
+    it('조건에 맞는 재고가 없으면 초기화할 길을 준다', () => {
+      renderPage()
+
+      fireEvent.change(screen.getByLabelText('품목 검색'), {
+        target: { value: '존재하지 않는 품목' },
+      })
+      expect(screen.getByText('조건에 맞는 재고가 없습니다')).toBeInTheDocument()
+
+      fireEvent.click(screen.getAllByRole('button', { name: '필터 초기화' })[0] as HTMLElement)
+      expect(bodyRows()).toHaveLength(allRows().length)
+    })
+  })
+
+  describe('개체재고', () => {
+    it('시리얼 관리 품목이 아니면 열 버튼이 없다', () => {
+      renderPage()
+
+      // 방수커버는 수량으로만 관리한다 — 매트리스·프레임만 개체 단위다
+      const row = rowOf('CVR-WP-K', '본사물류창고')
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('개체 수 버튼을 누르면 서랍에 개체 목록이 나온다', () => {
+      renderPage()
+
+      fireEvent.click(within(rowOf(SERIAL_ITEM, '본사물류창고')).getByRole('button'))
+
+      const drawer = screen.getByRole('dialog')
+      const expected = state().serials.filter(
+        (serial) => serial.itemCode === SERIAL_ITEM && serial.warehouseCode === HQ,
+      )
+
+      expect(within(drawer).getAllByRole('row').slice(1)).toHaveLength(expected.length)
+      for (const serial of expected) {
+        expect(within(drawer).getByText(serial.serialNumber)).toBeInTheDocument()
+      }
+    })
+
+    it('서랍의 보관 + 배정이 현재고와 맞는다', () => {
+      renderPage()
+
+      fireEvent.click(within(rowOf(SERIAL_ITEM, '본사물류창고')).getByRole('button'))
+
+      // 04_재고현황과 05_개체재고의 정합을 담당자가 눈으로 검산할 수 있어야 한다
+      const drawer = screen.getByRole('dialog')
+      // '창고 보관 중' 은 머리 숫자의 라벨이면서 개체상태 배지의 문구이기도 하다
+      const remaining = state().serials.filter(
+        (serial) =>
+          serial.itemCode === SERIAL_ITEM &&
+          serial.warehouseCode === HQ &&
+          serial.status !== '출고 완료',
+      ).length
+
+      for (const label of ['창고 보관 중', '주문 배정됨', '현재고']) {
+        expect(within(drawer).getByText(label, { selector: 'dt' })).toBeInTheDocument()
+      }
+      expect(remaining).toBe(findInventory(state().inventories, SERIAL_ITEM, HQ)?.currentQuantity)
+      expect(within(drawer).queryByText(/개체 수가 현재고와 다릅니다/)).not.toBeInTheDocument()
+    })
+
+    it('닫으면 서랍이 사라진다', () => {
+      renderPage()
+
+      fireEvent.click(within(rowOf(SERIAL_ITEM, '본사물류창고')).getByRole('button'))
+      fireEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * 예약은 04_재고현황의 예약수량과 05_개체재고의 개체상태를 함께 옮긴다.
+   * 두 숫자가 같은 액션에서 움직이는지는 이 화면에서만 한눈에 보인다.
+   */
+  it('예약하면 예약수량이 늘고 가용재고가 준다', () => {
+    const entry = planPreparation(state()).entries.find(
+      (candidate) =>
+        candidate.preparation.status === 'READY' &&
+        candidate.order.warehouseCode === HQ &&
+        candidate.preparation.items.some((item) => item.itemCode === SERIAL_ITEM),
+    )
+    if (!entry) throw new Error('시드에 MAT-Z10-Q 를 쓰는 READY 주문이 없다')
+
+    const before = findInventory(state().inventories, SERIAL_ITEM, HQ)
+    state().reserve(entry.order.orderId)
+    const after = findInventory(state().inventories, SERIAL_ITEM, HQ)
+
+    renderPage()
+
+    const cells = within(rowOf(SERIAL_ITEM, '본사물류창고')).getAllByRole('cell')
+    expect(after?.reservedQuantity).toBeGreaterThan(before?.reservedQuantity ?? 0)
+    expect(cells[3]).toHaveTextContent(String(after?.reservedQuantity))
+    expect(cells[4]).toHaveTextContent(
+      String((after?.currentQuantity ?? 0) - (after?.reservedQuantity ?? 0)),
+    )
+  })
+})

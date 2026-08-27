@@ -1,12 +1,22 @@
 import styled from 'styled-components'
 
+/**
+ * 아래 여백을 갖지 않는다. 페이지 Layout 이 flex gap 으로 간격을 주는데 여기서
+ * margin-bottom 까지 얹으면 gap + margin 이 더해져 두 배로 벌어진다.
+ * 형제 간 간격은 부모가 정한다.
+ */
 export const Root = styled.div`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing[4]};
-  margin-bottom: ${({ theme }) => theme.spacing[5]};
   flex-wrap: wrap;
+`
+
+/** 제목 블록. min-width:0 이 없으면 긴 설명이 줄바꿈되지 않고 액션을 밀어낸다. */
+export const TitleGroup = styled.div`
+  flex: 1 1 420px;
+  min-width: 0;
 `
 
 export const Title = styled.h1`

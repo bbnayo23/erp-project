@@ -14,10 +14,16 @@ const PATHS: Record<IconName, string> = {
     'M7 4h10a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2V6a2 2 0 0 1 2-2Zm1 5h8V7H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z',
   purchase:
     'M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM2 3h3l1 2h15l-3 8H7l-.4 1.2c-.1.4.2.8.6.8H19v2H7.2A2.2 2.2 0 0 1 5 14.6L6.3 11 4 5H2V3Z',
+  arrowRight: 'M5 12h13m0 0-5-5m5 5-5 5',
+  check: 'M5 13l4 4L19 7',
+  alert: 'M12 2 1 21h22L12 2Zm0 5.6 7.5 12.9h-15L12 7.6ZM11 10v5h2v-5h-2Zm0 6v2h2v-2h-2Z',
+  clock:
+    'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm-1 3v6l5 3 1-1.7-4-2.3V7h-2Z',
+  chevronDown: 'M6 9.5l6 6 6-6',
 }
 
-/** close 는 선으로, 나머지는 면으로 그린다 */
-const STROKED = new Set<IconName>(['close'])
+/** close·arrowRight·check 는 선으로, 나머지는 면으로 그린다 */
+const STROKED = new Set<IconName>(['close', 'arrowRight', 'check', 'chevronDown'])
 
 export function Icon({ name, size = 18, className }: IconProps) {
   const stroked = STROKED.has(name)
@@ -37,6 +43,7 @@ export function Icon({ name, size = 18, className }: IconProps) {
         stroke={stroked ? 'currentColor' : undefined}
         strokeWidth={stroked ? 1.8 : undefined}
         strokeLinecap={stroked ? 'round' : undefined}
+        strokeLinejoin={stroked ? 'round' : undefined}
       />
     </svg>
   )

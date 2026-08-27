@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AppProviders } from '@/app/providers'
 import { PreparationPage } from '@/pages/PreparationPage'
 import { useErpStore } from '@/store/erpStore'
+import { TOUR_STORAGE_KEY } from '@/pages/PreparationPage/constants'
 import { planPreparation } from '@/domain/preparation/planPreparation'
 
 /**
@@ -41,6 +42,8 @@ describe('PreparationPage', () => {
 
   beforeEach(() => {
     state().reset()
+    // 이 파일은 화면을 검증한다. 첫 방문 안내가 떠 있으면 검증 대상이 딤에 덮인다.
+    window.localStorage.setItem(TOUR_STORAGE_KEY, 'done')
   })
 
   afterEach(() => {
@@ -55,6 +58,31 @@ describe('PreparationPage', () => {
     expect(screen.getByText('배송 준비 현황')).toBeInTheDocument()
     expect(bodyRows()).toHaveLength(expected)
     expect(screen.getByText(`전체 ${expected}건`)).toBeInTheDocument()
+  })
+
+  /**
+   * 카드는 방금 읽은 숫자다. 그 8건을 보려고 아래 셀렉트를 다시 찾아야 하면
+   * 요약이 정보만 주고 일은 안 줄여준다.
+   */
+  it('요약 카드를 누르면 그 상태만 남고, 다시 누르면 풀린다', () => {
+    renderPage()
+
+    const summary = screen.getByRole('list', { name: '준비 상태 요약' })
+    const card = within(summary)
+      .getAllByRole('button')
+      .find((button) => (button.textContent ?? '').includes('재고 부족'))
+    if (!card) throw new Error('재고 부족 카드를 찾을 수 없다')
+
+    const shortage = planPreparation(state()).entries.filter(
+      (entry) => entry.preparation.status === 'SHORTAGE',
+    ).length
+
+    fireEvent.click(card)
+    expect(bodyRows()).toHaveLength(shortage)
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(card)
+    expect(bodyRows()).toHaveLength(planPreparation(state()).entries.length)
   })
 
   it('기준시각을 화면에 밝힌다', () => {

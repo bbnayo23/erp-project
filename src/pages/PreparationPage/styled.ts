@@ -1,5 +1,18 @@
 import styled from 'styled-components'
 
+/**
+ * 화면 안내의 대상 표시용 껍데기.
+ *
+ * `data-tour` 를 붙일 실제 박스가 필요하다 — 안내는 `getBoundingClientRect` 로 위치를
+ * 재므로 `display: contents` 로는 잴 수 없다. Layout 의 flex 아이템 자리를 그대로
+ * 이어받아 여백에는 영향을 주지 않는다.
+ */
+export const TourTarget = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+`
+
 export const Layout = styled.div`
   display: flex;
   flex-direction: column;
@@ -41,6 +54,22 @@ export const Detail = styled.span`
 export const Priority = styled.span`
   font-variant-numeric: tabular-nums;
   color: ${({ theme }) => theme.colors.textSubtle};
+`
+
+/**
+ * 필터 컨트롤 묶음.
+ *
+ * Panel 의 FilterBar 안에 한 겹 더 두는 이유는 안내가 이 영역을 가리켜야 하는데,
+ * Panel 이 `data-tour` 같은 속성을 전달하지 않기 때문이다. 공통 컴포넌트에 안내 전용
+ * props 를 뚫는 대신 페이지가 소유하는 박스에 붙인다.
+ */
+export const FilterRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing[3]};
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 `
 
 export const FilterSpacer = styled.div`

@@ -5,7 +5,6 @@ export const Root = styled.div<{ $tone: NoticeTone }>`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing[2]};
-  margin-bottom: ${({ theme }) => theme.spacing[4]};
   padding: ${({ theme }) => theme.spacing[3]} ${({ theme }) => theme.spacing[4]};
   border-radius: ${({ theme }) => theme.radius.md};
   font-size: ${({ theme }) => theme.font.size.sm};

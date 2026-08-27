@@ -11,11 +11,12 @@ export function GNB() {
   return (
     <Bar>
       <Brand>
-        <Logo>E</Logo>
+        <Logo aria-hidden>E</Logo>
         <BrandName>ERP</BrandName>
       </Brand>
 
-      <Nav>
+      {/* 화면 안내가 이 값으로 대상을 찾는다 */}
+      <Nav data-tour="nav">
         {NAVIGATION.map((item) => (
           <Item key={item.to} to={item.to}>
             <Icon name={item.icon} />
