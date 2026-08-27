@@ -42,7 +42,8 @@ describe('Select', () => {
     renderSelect()
 
     const style = window.getComputedStyle(field())
-    expect(style.borderRadius).toBe(lightTheme.radius.md)
+    // 컨트롤 곡률은 카드(radius.xl)와 같은 어휘를 쓴다 — 한 화면에서 곡률이 두 종류면 따로 논다
+    expect(style.borderRadius).toBe(lightTheme.radius.lg)
     expect(style.height).toBe(lightTheme.controlHeight.md)
     // 고정 높이 안에서 글자를 수직 중앙에 두려면 body 의 줄높이를 상속받지 않아야 한다
     expect(style.lineHeight).toBe('1')

@@ -29,9 +29,9 @@ describe('PurchasePage', () => {
 
   const renderPage = () =>
     render(
-      <MemoryRouter initialEntries={['/purchase']}>
+      <MemoryRouter initialEntries={['/inbound']}>
         <Routes>
-          <Route path="/purchase" element={<PurchasePage />} />
+          <Route path="/inbound" element={<PurchasePage />} />
           <Route path="/orders/:orderId" element={<div>주문 상세</div>} />
         </Routes>
       </MemoryRouter>,
@@ -39,7 +39,8 @@ describe('PurchasePage', () => {
     )
 
   const bodyRows = () => {
-    const table = screen.getByRole('table')
+    // 첫 표가 문서 목록, 둘째 표가 입고 이력이다
+    const table = screen.getAllByRole('table')[0] as HTMLElement
     // thead 한 줄을 뺀다
     return within(table).getAllByRole('row').slice(1)
   }
@@ -76,7 +77,7 @@ describe('PurchasePage', () => {
 
     const expected = state().incomingDocuments.length
 
-    expect(screen.getByText('발주 현황')).toBeInTheDocument()
+    expect(screen.getByText('발주')).toBeInTheDocument()
     expect(bodyRows()).toHaveLength(expected)
     expect(screen.getByText(`전체 ${expected}건`)).toBeInTheDocument()
   })
@@ -107,7 +108,13 @@ describe('PurchasePage', () => {
 
     const summary = screen.getByRole('list', { name: '입고예정 단계 요약' })
 
-    for (const label of ['입고예정 문서', '검사 대기', '입고 대기', '도착 예정', '미확정']) {
+    for (const label of [
+      '입고예정 문서 전체',
+      '검사할 것',
+      '입고할 것',
+      '기다리는 것',
+      '확정 안 됨',
+    ]) {
       expect(within(summary).getByText(label)).toBeInTheDocument()
     }
     expect(within(summary).getByText(`${state().incomingDocuments.length}건`)).toBeInTheDocument()
@@ -185,7 +192,8 @@ describe('PurchasePage', () => {
 
       const row = rowOf(DRAFT_DOCUMENT)
 
-      expect(within(row).getByText('미확정')).toBeInTheDocument()
+      // 단계 배지와 진행상태 칸의 확정여부 — 두 자리 모두 '미확정' 이라 적는다
+      expect(within(row).getAllByText('미확정').length).toBeGreaterThan(0)
       expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     })
 
@@ -230,6 +238,40 @@ describe('PurchasePage', () => {
 
       // 입력은 비워져 남은 잔여로 다시 채워진다
       expect(screen.getByLabelText(`${LEGACY_DOCUMENT} 입고 수량`)).toHaveValue('6')
+    })
+
+    /**
+     * 문서 목록의 '입고수량' 은 누적 합계라 이번에 얼마가 들어왔는지 말하지 않고,
+     * 그 입고로 어느 주문이 풀렸는지도 말하지 않는다.
+     */
+    it('입고하면 얼마가 늘었고 현재고가 얼마가 됐는지 이력에 남는다', () => {
+      renderPage()
+
+      const document = findDocument(LEGACY_DOCUMENT)
+
+      fireEvent.change(screen.getByLabelText(`${LEGACY_DOCUMENT} 입고 수량`), {
+        target: { value: '4' },
+      })
+      fireEvent.click(within(rowOf(LEGACY_DOCUMENT)).getByRole('button', { name: '입고' }))
+
+      const history = screen.getAllByRole('table')[1] as HTMLElement
+      const row = within(history)
+        .getAllByRole('row')
+        .find((candidate) => within(candidate).queryByText(LEGACY_DOCUMENT))
+      if (!row) throw new Error('입고 이력이 없다')
+
+      const current =
+        findInventory(state().inventories, document.itemCode, document.warehouseCode)
+          ?.currentQuantity ?? 0
+
+      expect(within(row).getByText('+4')).toBeInTheDocument()
+      expect(within(row).getByText(String(current))).toBeInTheDocument()
+    })
+
+    it('입고하기 전에는 이력이 비어 있다', () => {
+      renderPage()
+
+      expect(screen.getByText('아직 입고한 문서가 없습니다')).toBeInTheDocument()
     })
 
     /** 초과 입고는 발주서를 먼저 고쳐야 하는 사건이다 — 조용히 잘라 넣지 않는다 */

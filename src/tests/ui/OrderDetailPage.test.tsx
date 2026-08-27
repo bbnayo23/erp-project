@@ -6,6 +6,7 @@ import type { PreparationStatus } from '@/types'
 import { AppProviders } from '@/app/providers'
 import { OrderDetailPage } from '@/pages/OrderDetailPage'
 import { useErpStore } from '@/store/erpStore'
+import { lightTheme } from '@/styles/theme'
 import { planPreparation } from '@/domain/preparation/planPreparation'
 import { findInventory } from '@/domain/inventory/getAvailableQuantity'
 
@@ -22,6 +23,7 @@ describe('OrderDetailPage', () => {
     render(
       <MemoryRouter initialEntries={[`/orders/${orderId}`]}>
         <Routes>
+          <Route path="/orders" element={<div>배송 준비 현황</div>} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         </Routes>
       </MemoryRouter>,
@@ -51,6 +53,48 @@ describe('OrderDetailPage', () => {
 
   afterEach(() => {
     cleanup()
+  })
+
+  /**
+   * 준비 품목 표는 세트를 풀고 서비스를 걷어낸 뒤의 모습이라 주문서와 대조할 수 없다.
+   * 담당자가 '내가 주문한 것' 과 '실제로 준비할 것' 을 나란히 볼 수 있어야 한다.
+   */
+  describe('주문 품목 표', () => {
+    it('06_주문에 적힌 줄을 그대로 보여준다', () => {
+      const { order } = orderWith('READY')
+      renderDetail(order.orderId)
+
+      const ordered = section('주문 품목')
+      const rows = within(ordered).getAllByRole('row').slice(1)
+
+      expect(rows).toHaveLength(order.items.length)
+      for (const line of order.items) {
+        expect(within(ordered).getAllByText(new RegExp(line.itemCode)).length).toBeGreaterThan(0)
+      }
+    })
+
+    it('세트는 무엇으로 풀리는지 적는다', () => {
+      // 세트 주문 — 준비 품목 표에는 세트가 아예 나오지 않는다
+      const entry = planPreparation(state()).entries.find((candidate) =>
+        candidate.order.items.some((line) => line.itemCode.startsWith('SET-')),
+      )
+      if (!entry) throw new Error('시드에 세트 주문이 없다')
+
+      renderDetail(entry.order.orderId)
+
+      expect(within(section('주문 품목')).getByText(/세트 전개 →/)).toBeInTheDocument()
+    })
+
+    it('취소 품목이 왜 빠졌는지 적는다', () => {
+      const entry = planPreparation(state()).entries.find((candidate) =>
+        candidate.order.items.some((line) => line.status === '취소'),
+      )
+      if (!entry) throw new Error('시드에 취소 품목이 있는 주문이 없다')
+
+      renderDetail(entry.order.orderId)
+
+      expect(within(section('주문 품목')).getByText(/취소된 품목이라/)).toBeInTheDocument()
+    })
   })
 
   describe('품목 표', () => {
@@ -91,6 +135,247 @@ describe('OrderDetailPage', () => {
   })
 
   /** 상태에 따라 가능한 액션만 노출한다 */
+  /**
+   * 처리 결과는 화면 가운데 토스트로 뜬다.
+   *
+   * 인라인 배너를 쓰던 자리다. 배너는 페이지 위쪽에 붙어 있어 표를 보고 있던 담당자의
+   * 시야 밖에서 떴다.
+   */
+  describe('토스트', () => {
+    it('예약하면 저장되었다는 사실과 무엇이 바뀌었는지가 함께 뜬다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      fireEvent.click(screen.getByRole('button', { name: '예약' }))
+
+      const toast = screen.getByRole('status')
+      expect(within(toast).getByText(/예약이 완료되었습니다/)).toBeInTheDocument()
+      expect(within(toast).getByText(/개체까지 배정되어/)).toBeInTheDocument()
+    })
+
+    it('실패는 무엇이 막혔는지 설명과 함께 뜬다', () => {
+      const entry = planPreparation(state()).entries.find(
+        (candidate) => candidate.preparation.status === 'WAITING',
+      )
+      if (!entry) throw new Error('시드에 WAITING 주문이 없다')
+
+      // 화면에는 예약 버튼이 없으므로 스토어를 직접 불러 같은 실패를 만든다
+      renderDetail(entry.order.orderId)
+      expect(screen.queryByRole('button', { name: '예약' })).not.toBeInTheDocument()
+    })
+
+    it('토스트를 닫으면 사라진다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      fireEvent.click(screen.getByRole('button', { name: '예약' }))
+      fireEvent.click(screen.getByRole('button', { name: '알림 닫기' }))
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * 저장하지 않은 입력을 두고 나가려 할 때 묻는다.
+   *
+   * 이 화면에서 손으로 넣는 값은 입고 수량뿐이다. 기본값(잔여 전량)을 그대로 두면
+   * 입력한 것이 아니므로 묻지 않는다 — 물을 것이 없는데 창이 뜨면 담당자가 창을
+   * 습관적으로 넘기게 되고, 정작 값을 잃을 때 막아주지 못한다.
+   */
+  describe('저장하지 않은 입력', () => {
+    /** 입고 수량 입력을 가진 주문 하나 */
+    const orderWithReceipt = () => {
+      const entry = planPreparation(state()).entries.find((candidate) =>
+        state().incomingDocuments.some(
+          (document) =>
+            document.confirmed &&
+            document.warehouseCode === candidate.order.warehouseCode &&
+            document.plannedQuantity > document.receivedQuantity &&
+            candidate.preparation.items.some((item) => item.itemCode === document.itemCode),
+        ),
+      )
+      if (!entry) throw new Error('시드에 입고예정을 기다리는 주문이 없다')
+      return entry
+    }
+
+    const receiptInput = () => {
+      const input = screen.queryAllByLabelText(/입고 수량$/)[0]
+      if (!input) throw new Error('입고 수량 입력이 없다')
+      return input
+    }
+
+    it('입력하지 않았으면 묻지 않고 목록으로 나간다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      fireEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+      expect(screen.getByText('배송 준비 현황')).toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    it('입력한 값이 있으면 경고창이 뜬다', () => {
+      renderDetail(orderWithReceipt().order.orderId)
+
+      fireEvent.change(receiptInput(), { target: { value: '1' } })
+      fireEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+      const alert = screen.getByRole('alertdialog')
+      expect(within(alert).getByText(/저장하지 않고 목록으로 나갈까요/)).toBeInTheDocument()
+      expect(within(alert).getByText(/저장되지 않습니다/)).toBeInTheDocument()
+      // 아직 나가지 않았다
+      expect(screen.queryByText('배송 준비 현황')).not.toBeInTheDocument()
+    })
+
+    it('계속 입력을 고르면 값이 남는다', () => {
+      renderDetail(orderWithReceipt().order.orderId)
+
+      fireEvent.change(receiptInput(), { target: { value: '1' } })
+      fireEvent.click(screen.getByRole('button', { name: '목록으로' }))
+      fireEvent.click(screen.getByRole('button', { name: '취소' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(receiptInput()).toHaveValue('1')
+    })
+
+    it('나가기를 고르면 목록으로 간다', () => {
+      renderDetail(orderWithReceipt().order.orderId)
+
+      fireEvent.change(receiptInput(), { target: { value: '1' } })
+      fireEvent.click(screen.getByRole('button', { name: '목록으로' }))
+      fireEvent.click(screen.getByRole('button', { name: '나가기' }))
+
+      expect(screen.getByText('배송 준비 현황')).toBeInTheDocument()
+    })
+
+    it('입력 취소는 값을 되돌린다', () => {
+      const entry = orderWithReceipt()
+      renderDetail(entry.order.orderId)
+
+      const before = (receiptInput() as HTMLInputElement).value
+      fireEvent.change(receiptInput(), { target: { value: '1' } })
+
+      fireEvent.click(screen.getByRole('button', { name: '입력 취소' }))
+      fireEvent.click(screen.getByRole('button', { name: '값 버리기' }))
+
+      // 기본값(잔여 전량)으로 돌아간다
+      expect(receiptInput()).toHaveValue(before)
+    })
+  })
+
+  /**
+   * 다음에 무엇을 하는지가 한 줄로 보여야 한다.
+   *
+   * 준비상태 배지는 '무엇이 막혔는가' 를 말하고 단계 줄은 '그래서 다음에 무엇을
+   * 하는가' 를 말한다. 둘은 다른 질문이다.
+   */
+  describe('처리 단계', () => {
+    const steps = () => screen.getByRole('list', { name: '처리 단계' })
+
+    it('네 칸을 순서대로 세운다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      const labels = within(steps())
+        .getAllByRole('listitem')
+        .map((item) => item.textContent)
+
+      expect(labels).toEqual(['부족분 발주', '입고', '예약', '출고'])
+    })
+
+    it('READY 주문의 다음 할 일은 예약이다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      expect(screen.getByText('다음 할 일 — 예약')).toBeInTheDocument()
+      // 지금 할 일 버튼이 그 줄에 있다
+      expect(screen.getByRole('button', { name: '예약' })).toBeInTheDocument()
+    })
+
+    it('SHORTAGE 주문의 다음 할 일은 발주다', () => {
+      renderDetail(orderWith('SHORTAGE').order.orderId)
+
+      expect(screen.getByText('다음 할 일 — 부족분 발주')).toBeInTheDocument()
+    })
+
+    it('WAITING 주문은 입고를 기다린다', () => {
+      renderDetail(orderWith('WAITING').order.orderId)
+
+      expect(screen.getByText('다음 할 일 — 입고')).toBeInTheDocument()
+    })
+
+    it('예약한 주문의 다음 할 일은 출고다', () => {
+      const { order } = orderWith('READY')
+      state().reserve(order.orderId)
+
+      renderDetail(order.orderId)
+
+      expect(screen.getByText('다음 할 일 — 출고')).toBeInTheDocument()
+    })
+
+    /**
+     * 단계 칩이 카드 테두리에 붙어 있었다. Panel 에는 여백이 없고 표만 들어간다는
+     * 전제였는데, 표가 아닌 내용을 넣으면서 그 전제가 깨졌다.
+     */
+    it('단계 칩이 카드 안쪽 여백을 지킨다', () => {
+      renderDetail(orderWith('READY').order.orderId)
+
+      const body = steps().parentElement?.parentElement
+      if (!body) throw new Error('카드 본문을 찾을 수 없다')
+
+      // 표의 첫 글자와 같은 세로선에 서야 한다
+      expect(getComputedStyle(body).paddingLeft).toBe(lightTheme.tableCell.paddingX)
+      expect(getComputedStyle(body).paddingRight).toBe(lightTheme.tableCell.paddingX)
+    })
+
+    it('확인 필요 주문은 할 일 대신 사유를 가리킨다', () => {
+      renderDetail(orderWith('EXCEPTION').order.orderId)
+
+      expect(screen.getByText(/확인 필요 — 아래 사유를/)).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * 상세로 들어와도 목록을 잃지 않는다.
+   *
+   * 배정 순서가 곧 업무 순서인 화면이라 '몇 번째를 보고 있는지' 와 '다음이 무엇인지'
+   * 가 사라지면 담당자가 목록과 상세를 왕복하게 된다.
+   */
+  describe('주문 레일', () => {
+    const rail = () => screen.getByRole('navigation', { name: '배송 준비 주문' })
+
+    it('준비 대상 주문이 모두 카드로 선다', () => {
+      const entries = planPreparation(state()).entries
+      renderDetail(entries[0]?.order.orderId ?? '')
+
+      expect(within(rail()).getAllByRole('button')).toHaveLength(entries.length)
+    })
+
+    it('보고 있는 주문이 표시된다', () => {
+      const { order } = orderWith('READY')
+      renderDetail(order.orderId)
+
+      const current = within(rail())
+        .getAllByRole('button')
+        .filter((card) => card.getAttribute('aria-current') === 'true')
+
+      expect(current).toHaveLength(1)
+      expect(current[0]).toHaveTextContent(order.orderId)
+    })
+
+    it('다른 카드를 누르면 그 주문으로 옮겨간다', () => {
+      const entries = planPreparation(state()).entries
+      const [first, second] = entries
+      if (!first || !second) throw new Error('계획에 주문이 두 건 이상 필요하다')
+
+      renderDetail(first.order.orderId)
+
+      const card = within(rail())
+        .getAllByRole('button')
+        .find((candidate) => candidate.textContent?.includes(second.order.orderId))
+      if (!card) throw new Error('두 번째 주문 카드를 찾을 수 없다')
+
+      fireEvent.click(card)
+
+      expect(screen.getByRole('heading', { name: second.order.orderId })).toBeInTheDocument()
+    })
+  })
+
   describe('액션 노출', () => {
     it('READY 주문에는 예약만 보인다', () => {
       renderDetail(orderWith('READY').order.orderId)
@@ -137,7 +422,7 @@ describe('OrderDetailPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '예약' }))
 
-      expect(screen.getByText(/예약했습니다/)).toBeInTheDocument()
+      expect(screen.getByText(/예약이 완료되었습니다/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '출고' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '예약 해제' })).toBeInTheDocument()
       // 예약 버튼이 사라지므로 두 번 누를 수 없다
@@ -174,7 +459,7 @@ describe('OrderDetailPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '예약' }))
       fireEvent.click(screen.getByRole('button', { name: '예약 해제' }))
 
-      expect(screen.getByText(/예약을 해제했습니다/)).toBeInTheDocument()
+      expect(screen.getByText(/예약 해제가 완료되었습니다/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '예약' })).toBeInTheDocument()
     })
 
@@ -207,7 +492,7 @@ describe('OrderDetailPage', () => {
       renderDetail(order.orderId)
       fireEvent.click(screen.getByRole('button', { name: /부족분 발주 생성/ }))
 
-      expect(screen.getByText(/발주를 생성했습니다/)).toBeInTheDocument()
+      expect(screen.getByText(/발주가 저장되었습니다/)).toBeInTheDocument()
       expect(state().incomingDocuments.length).toBeGreaterThan(beforeDocuments)
       expect(state().inventories.map((inventory) => inventory.currentQuantity)).toEqual(
         beforeQuantities,
@@ -258,7 +543,7 @@ describe('OrderDetailPage', () => {
       )
 
       expect(afterShortage).toBeGreaterThan(beforeShortage)
-      expect(screen.getByText(/입고했습니다/)).toBeInTheDocument()
+      expect(screen.getByText(/입고가 완료되었습니다/)).toBeInTheDocument()
     })
 
     /** 입고 수량 입력은 잔여 전량으로 채워진다 — 부분 입고가 예외다 */

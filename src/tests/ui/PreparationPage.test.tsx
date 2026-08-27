@@ -5,7 +5,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AppProviders } from '@/app/providers'
 import { PreparationPage } from '@/pages/PreparationPage'
 import { useErpStore } from '@/store/erpStore'
-import { TOUR_STORAGE_KEY } from '@/pages/PreparationPage/constants'
 import { planPreparation } from '@/domain/preparation/planPreparation'
 
 /**
@@ -42,8 +41,6 @@ describe('PreparationPage', () => {
 
   beforeEach(() => {
     state().reset()
-    // 이 파일은 화면을 검증한다. 첫 방문 안내가 떠 있으면 검증 대상이 딤에 덮인다.
-    window.localStorage.setItem(TOUR_STORAGE_KEY, 'done')
   })
 
   afterEach(() => {
@@ -55,7 +52,7 @@ describe('PreparationPage', () => {
 
     const expected = planPreparation(state()).entries.length
 
-    expect(screen.getByText('배송 준비 현황')).toBeInTheDocument()
+    expect(screen.getByText('주문')).toBeInTheDocument()
     expect(bodyRows()).toHaveLength(expected)
     expect(screen.getByText(`전체 ${expected}건`)).toBeInTheDocument()
   })
@@ -70,7 +67,7 @@ describe('PreparationPage', () => {
     const summary = screen.getByRole('list', { name: '준비 상태 요약' })
     const card = within(summary)
       .getAllByRole('button')
-      .find((button) => (button.textContent ?? '').includes('재고 부족'))
+      .find((button) => (button.textContent ?? '').includes('발주 필요'))
     if (!card) throw new Error('재고 부족 카드를 찾을 수 없다')
 
     const shortage = planPreparation(state()).entries.filter(
@@ -93,7 +90,7 @@ describe('PreparationPage', () => {
   })
 
   /**
-   * 요약 영역을 이름으로 지목한다. '입고 대기' 같은 라벨은 표의 상태 배지에도 같은
+   * 요약 영역을 이름으로 지목한다. '입고 기다림' 같은 라벨은 표의 상태 배지에도 같은
    * 문자열로 나오므로, 화면 전체에서 찾으면 어느 쪽을 본 것인지 알 수 없다.
    */
   it('요약 카드가 상태별 건수를 보여준다', () => {
@@ -102,7 +99,13 @@ describe('PreparationPage', () => {
     const summary = screen.getByRole('list', { name: '준비 상태 요약' })
     const total = planPreparation(state()).entries.length
 
-    for (const label of ['준비 대상', '바로 준비 가능', '입고 대기', '재고 부족', '확인 필요']) {
+    for (const label of [
+      '준비 대상 전체',
+      '예약할 수 있음',
+      '입고 기다림',
+      '발주 필요',
+      '사람이 볼 것',
+    ]) {
       expect(within(summary).getByText(label)).toBeInTheDocument()
     }
     expect(within(summary).getByText(`${total}건`)).toBeInTheDocument()
@@ -146,6 +149,24 @@ describe('PreparationPage', () => {
 
       expect(bodyRows()).toHaveLength(shortage)
       expect(screen.getByText(`${shortage}건 / 전체 ${total}건`)).toBeInTheDocument()
+    })
+
+    it('배송일을 고르면 그날 나갈 주문만 남는다', () => {
+      renderPage()
+
+      const entries = planPreparation(state()).entries
+      const first = entries[0]
+      if (!first) throw new Error('계획이 비어 있다')
+
+      const sameDay = entries.filter(
+        (entry) => entry.order.deliveryDate === first.order.deliveryDate,
+      ).length
+
+      fireEvent.change(screen.getByLabelText('배송예정일'), {
+        target: { value: first.order.deliveryDate },
+      })
+
+      expect(bodyRows()).toHaveLength(sameDay)
     })
 
     it('주문번호로 검색한다', () => {
