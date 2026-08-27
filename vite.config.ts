@@ -29,5 +29,11 @@ export default defineConfig({
     environment: 'node',
     include: ['src/tests/**/*.test.{ts,tsx}'],
     setupFiles: ['src/tests/setup.ts'],
+    /*
+     * 화면 테스트 파일의 첫 렌더는 styled-components 가 그 파일에 쓰인 모든 규칙을
+     * 한 번에 주입하는 값을 치른다. 파일이 병렬로 돌 때 이 초기 비용이 기본 5초를
+     * 넘길 때가 있다 — 제품이 느려진 것이 아니라 테스트 환경의 준비 비용이다.
+     */
+    testTimeout: 15000,
   },
 })

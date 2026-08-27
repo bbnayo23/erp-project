@@ -24,3 +24,8 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# 로컬 작업 도구 — Claude Code 설정과 스킬 문서
+# 프로젝트 산출물이 아니라 개인 작업 환경이라 공유하지 않는다.
+.claude/
+.cluade/
