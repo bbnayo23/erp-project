@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { DocumentId, ErpDatabase, OrderId, Quantity } from '@/types'
 import {
   SEED_BASE_AT,
@@ -17,6 +18,7 @@ import { serialRepository } from '@/data/repositories/serialRepository'
 import { groupOrderRows } from '@/domain/order/groupOrderRows'
 import { findItem, isSerialManaged } from '@/domain/master/itemRules'
 import { findPlanEntry, planPreparation } from '@/domain/preparation/planPreparation'
+import { recordMovements } from '@/domain/inventory/recordMovements'
 import { releaseOrder } from '@/domain/inventory/releaseOrder'
 import { reserveOrder, type ReserveFailure } from '@/domain/inventory/reserveOrder'
 import { shipOrder, type ShipFailure } from '@/domain/inventory/shipOrder'
@@ -47,6 +49,7 @@ export const createInitialDatabase = (): ErpDatabase => ({
   suppliers: SEED_SUPPLIERS,
   reservations: [],
   shipments: [],
+  stockMovements: [],
   processedRequests: [],
   baseAt: SEED_BASE_AT,
 })
@@ -115,152 +118,246 @@ export type ErpStore = ErpDatabase & ErpActions
  * 시각은 `baseAt` 을 쓴다. 04_재고현황의 기준시각이 이 데이터의 '오늘' 이므로,
  * 실제 시계를 섞으면 납기 계산과 이력의 시간축이 어긋난다.
  */
-export const useErpStore = create<ErpStore>((set, get) => ({
-  ...createInitialDatabase(),
+/** localStorage 키. 값 모양이 바뀌면 STORAGE_VERSION 을 올려 옛 저장분을 버린다. */
+const STORAGE_KEY = 'erp-project/state'
+const STORAGE_VERSION = 1
 
-  reset: () => set(createInitialDatabase()),
+/**
+ * 브라우저 밖에서 도는 메모리 저장소.
+ *
+ * 도메인·스토어 테스트는 node 환경에서 돌아 localStorage 가 없다. 그대로 두면 persist 가
+ * 매 액션마다 경고를 찍는데, 저장이 실패한 것이 아니라 저장할 곳이 없는 것이므로
+ * 경고가 아니라 대체가 맞다.
+ */
+const memoryStorage = ((): StateStorage => {
+  const values = new Map<string, string>()
+  return {
+    getItem: (name) => values.get(name) ?? null,
+    setItem: (name, value) => {
+      values.set(name, value)
+    },
+    removeItem: (name) => {
+      values.delete(name)
+    },
+  }
+})()
 
-  reserve: (orderId) => {
-    const state = get()
-    const order = orderRepository.find(state.orders, orderId)
-    if (!order) return failed('ORDER_NOT_FOUND')
+const stateStorage = (): StateStorage =>
+  typeof localStorage === 'undefined' ? memoryStorage : localStorage
 
-    // 화면이 들고 있던 판정을 쓰지 않고 지금 상태로 전체를 다시 계획한다.
-    // 이 주문만 단독으로 판정하면 배송일이 앞선 주문의 몫까지 쓸 수 있다고 보게 된다.
-    const entry = findPlanEntry(planPreparation(state), orderId)
-    if (!entry) return failed('ORDER_NOT_FOUND')
+/**
+ * 저장할 것만 고른다.
+ *
+ * 01_품목 · 02_세트구성 · 03_창고 · 08_공급처와 기준시각은 시드에서 다시 읽는다. 앱이
+ * 바꾸지 않는 값이므로 저장해 두면 시드를 고쳐도 옛 사본이 살아남아 화면과 엑셀이
+ * 어긋난다. 담당자의 처리 결과가 남아 있는 컬렉션만 저장한다.
+ */
+const persistedSlice = (state: ErpStore) => ({
+  inventories: state.inventories,
+  serials: state.serials,
+  orders: state.orders,
+  incomingDocuments: state.incomingDocuments,
+  reservations: state.reservations,
+  shipments: state.shipments,
+  stockMovements: state.stockMovements,
+  processedRequests: state.processedRequests,
+})
 
-    const result = reserveOrder(state, {
-      order,
-      preparation: entry.preparation,
-      // 한 주문의 예약은 한 번이다 — 주문번호가 그대로 멱등성 키가 된다
-      requestId: `RESERVE:${orderId}`,
-      reservedAt: state.baseAt,
-    })
-    if (!result.ok) return failed(result.failure as ActionFailureCode)
+export const useErpStore = create<ErpStore>()(
+  persist<ErpStore, [], [], ReturnType<typeof persistedSlice>>(
+    (set, get) => ({
+      ...createInitialDatabase(),
 
-    set({
-      inventories: result.inventories,
-      serials: result.serials,
-      reservations: result.reservations,
-      processedRequests: result.processedRequests,
-    })
-    return succeeded
-  },
+      // 시드 상태도 그대로 저장된다 — 저장분을 지우기만 하면 옛 상태가 남아 되살아난다
+      reset: () => set(createInitialDatabase()),
 
-  release: (orderId) => {
-    const state = get()
-    const result = releaseOrder(state, orderId)
-    if (!result.ok) return failed(result.failure as ActionFailureCode)
+      reserve: (orderId) => {
+        const state = get()
+        const order = orderRepository.find(state.orders, orderId)
+        if (!order) return failed('ORDER_NOT_FOUND')
 
-    // 예약 기록을 지우면서 해제하므로 요청 ID 가 없어도 두 번 빠지지 않는다
-    set({
-      inventories: result.inventories,
-      serials: result.serials,
-      reservations: result.reservations,
-    })
-    return succeeded
-  },
+        // 화면이 들고 있던 판정을 쓰지 않고 지금 상태로 전체를 다시 계획한다.
+        // 이 주문만 단독으로 판정하면 배송일이 앞선 주문의 몫까지 쓸 수 있다고 보게 된다.
+        const entry = findPlanEntry(planPreparation(state), orderId)
+        if (!entry) return failed('ORDER_NOT_FOUND')
 
-  ship: (orderId) => {
-    const state = get()
-    const order = orderRepository.find(state.orders, orderId)
-    if (!order) return failed('ORDER_NOT_FOUND')
+        const result = reserveOrder(state, {
+          order,
+          preparation: entry.preparation,
+          // 한 주문의 예약은 한 번이다 — 주문번호가 그대로 멱등성 키가 된다
+          requestId: `RESERVE:${orderId}`,
+          reservedAt: state.baseAt,
+        })
+        if (!result.ok) return failed(result.failure as ActionFailureCode)
 
-    const result = shipOrder(state, {
-      order,
-      requestId: `SHIP:${orderId}`,
-      shippedAt: state.baseAt,
-    })
-    if (!result.ok) return failed(result.failure as ActionFailureCode)
-
-    set({
-      inventories: result.inventories,
-      serials: result.serials,
-      reservations: result.reservations,
-      orders: result.orders,
-      shipments: result.shipments,
-      processedRequests: result.processedRequests,
-    })
-    return succeeded
-  },
-
-  issueIncoming: (lines, requestId) => {
-    const state = get()
-
-    // 이 호출 안에서 이미 발급한 번호도 후보에서 빼야 한다. 같은 품목이 창고만
-    // 달라도 기준 번호가 같아 두 문서가 같은 번호를 받는다.
-    const issuedIds: { documentId: DocumentId }[] = []
-
-    const result = issueIncomingDocuments(state, {
-      lines,
-      requestId,
-      orderedAt: state.baseAt,
-      makeDocumentId: (line, documentType) => {
-        const documentId = incomingRepository.nextDocumentId(
-          [...state.incomingDocuments, ...issuedIds],
-          documentType,
-          line.itemCode,
-          state.baseAt,
-        )
-        issuedIds.push({ documentId })
-        return documentId
+        set({
+          inventories: result.inventories,
+          serials: result.serials,
+          reservations: result.reservations,
+          processedRequests: result.processedRequests,
+          stockMovements: [
+            ...state.stockMovements,
+            ...recordMovements(state.inventories, result.inventories, {
+              kind: 'RESERVE',
+              requestId: `RESERVE:${orderId}`,
+              occurredAt: state.baseAt,
+              orderId,
+            }),
+          ],
+        })
+        return succeeded
       },
-    })
 
-    if (!result.ok) return failed(result.failure ?? 'NOTHING_TO_ISSUE')
+      release: (orderId) => {
+        const state = get()
+        const result = releaseOrder(state, orderId)
+        if (!result.ok) return failed(result.failure as ActionFailureCode)
 
-    set({
-      incomingDocuments: result.incomingDocuments,
-      processedRequests: result.processedRequests,
-    })
-    return succeeded
-  },
+        // 예약 기록을 지우면서 해제하므로 요청 ID 가 없어도 두 번 빠지지 않는다
+        set({
+          inventories: result.inventories,
+          serials: result.serials,
+          reservations: result.reservations,
+          stockMovements: [
+            ...state.stockMovements,
+            ...recordMovements(state.inventories, result.inventories, {
+              kind: 'RELEASE',
+              requestId: `RELEASE:${orderId}`,
+              occurredAt: state.baseAt,
+              orderId,
+            }),
+          ],
+        })
+        return succeeded
+      },
 
-  receive: (documentId, quantity, requestId) => {
-    const state = get()
+      ship: (orderId) => {
+        const state = get()
+        const order = orderRepository.find(state.orders, orderId)
+        if (!order) return failed('ORDER_NOT_FOUND')
 
-    const document = incomingRepository.find(state.incomingDocuments, documentId)
-    if (!document) return failed('DOCUMENT_NOT_FOUND')
+        const result = shipOrder(state, {
+          order,
+          requestId: `SHIP:${orderId}`,
+          shippedAt: state.baseAt,
+        })
+        if (!result.ok) return failed(result.failure as ActionFailureCode)
 
-    const item = findItem(state.items, document.itemCode)
-    if (!item) return failed('ITEM_NOT_FOUND')
+        set({
+          inventories: result.inventories,
+          serials: result.serials,
+          reservations: result.reservations,
+          orders: result.orders,
+          shipments: result.shipments,
+          processedRequests: result.processedRequests,
+          stockMovements: [
+            ...state.stockMovements,
+            ...recordMovements(state.inventories, result.inventories, {
+              kind: 'SHIP',
+              requestId: `SHIP:${orderId}`,
+              occurredAt: state.baseAt,
+              orderId,
+            }),
+          ],
+        })
+        return succeeded
+      },
 
-    // 개체번호는 스토어가 만든다. 도메인 함수는 순수해야 하므로 번호를 지어내지 않는다.
-    const serialNumbers = isSerialManaged(item)
-      ? serialRepository.nextSerialNumbers(state.serials, item.itemCode, quantity)
-      : undefined
+      issueIncoming: (lines, requestId) => {
+        const state = get()
 
-    const result = receiveIncoming(state, {
-      document,
-      item,
-      quantity,
-      requestId,
-      receivedAt: state.baseAt,
-      ...(serialNumbers ? { serialNumbers } : {}),
-    })
-    if (!result.ok) return failed(result.failure as ActionFailureCode)
+        // 이 호출 안에서 이미 발급한 번호도 후보에서 빼야 한다. 같은 품목이 창고만
+        // 달라도 기준 번호가 같아 두 문서가 같은 번호를 받는다.
+        const issuedIds: { documentId: DocumentId }[] = []
 
-    set({
-      inventories: result.inventories,
-      serials: result.serials,
-      incomingDocuments: incomingRepository.replace(state.incomingDocuments, result.document),
-      processedRequests: result.processedRequests,
-    })
-    return succeeded
-  },
+        const result = issueIncomingDocuments(state, {
+          lines,
+          requestId,
+          orderedAt: state.baseAt,
+          makeDocumentId: (line, documentType) => {
+            const documentId = incomingRepository.nextDocumentId(
+              [...state.incomingDocuments, ...issuedIds],
+              documentType,
+              line.itemCode,
+              state.baseAt,
+            )
+            issuedIds.push({ documentId })
+            return documentId
+          },
+        })
 
-  inspect: (documentId) => {
-    const state = get()
+        if (!result.ok) return failed(result.failure ?? 'NOTHING_TO_ISSUE')
 
-    const document = incomingRepository.find(state.incomingDocuments, documentId)
-    if (!document) return failed('DOCUMENT_NOT_FOUND')
+        set({
+          incomingDocuments: result.incomingDocuments,
+          processedRequests: result.processedRequests,
+        })
+        return succeeded
+      },
 
-    const inspected = completeInspection(document)
-    // completeInspection 은 대기 상태가 아니면 같은 객체를 돌려준다
-    if (inspected === document) return failed('NOT_PENDING_INSPECTION')
+      receive: (documentId, quantity, requestId) => {
+        const state = get()
 
-    set({ incomingDocuments: incomingRepository.replace(state.incomingDocuments, inspected) })
-    return succeeded
-  },
-}))
+        const document = incomingRepository.find(state.incomingDocuments, documentId)
+        if (!document) return failed('DOCUMENT_NOT_FOUND')
+
+        const item = findItem(state.items, document.itemCode)
+        if (!item) return failed('ITEM_NOT_FOUND')
+
+        // 개체번호는 스토어가 만든다. 도메인 함수는 순수해야 하므로 번호를 지어내지 않는다.
+        const serialNumbers = isSerialManaged(item)
+          ? serialRepository.nextSerialNumbers(state.serials, item.itemCode, quantity)
+          : undefined
+
+        const result = receiveIncoming(state, {
+          document,
+          item,
+          quantity,
+          requestId,
+          receivedAt: state.baseAt,
+          ...(serialNumbers ? { serialNumbers } : {}),
+        })
+        if (!result.ok) return failed(result.failure as ActionFailureCode)
+
+        set({
+          inventories: result.inventories,
+          serials: result.serials,
+          incomingDocuments: incomingRepository.replace(state.incomingDocuments, result.document),
+          processedRequests: result.processedRequests,
+          stockMovements: [
+            ...state.stockMovements,
+            ...recordMovements(state.inventories, result.inventories, {
+              kind: 'RECEIVE',
+              requestId,
+              occurredAt: state.baseAt,
+              documentId,
+              // 부족분 발주에서 나온 문서라면 어느 주문을 풀어준 입고인지 이력에서 바로 보여야 한다
+              ...(document.relatedOrderId ? { orderId: document.relatedOrderId } : {}),
+            }),
+          ],
+        })
+        return succeeded
+      },
+
+      inspect: (documentId) => {
+        const state = get()
+
+        const document = incomingRepository.find(state.incomingDocuments, documentId)
+        if (!document) return failed('DOCUMENT_NOT_FOUND')
+
+        const inspected = completeInspection(document)
+        // completeInspection 은 대기 상태가 아니면 같은 객체를 돌려준다
+        if (inspected === document) return failed('NOT_PENDING_INSPECTION')
+
+        set({ incomingDocuments: incomingRepository.replace(state.incomingDocuments, inspected) })
+        return succeeded
+      },
+    }),
+    {
+      name: STORAGE_KEY,
+      version: STORAGE_VERSION,
+      storage: createJSONStorage(stateStorage),
+      partialize: persistedSlice,
+    },
+  ),
+)

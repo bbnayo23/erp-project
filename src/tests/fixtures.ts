@@ -139,6 +139,7 @@ export const db = (overrides: Partial<ErpDatabase> = {}): ErpDatabase => ({
   suppliers: SUPPLIERS,
   reservations: [],
   shipments: [],
+  stockMovements: [],
   processedRequests: [],
   baseAt: BASE_AT,
   ...overrides,

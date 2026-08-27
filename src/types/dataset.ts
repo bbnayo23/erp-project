@@ -7,6 +7,7 @@ import type { ProcessedRequest } from './request'
 import type { Reservation } from './reservation'
 import type { SerialInventory } from './serial'
 import type { Shipment } from './shipment'
+import type { StockMovement } from './movement'
 import type { Supplier } from './supplier'
 import type { Warehouse } from './warehouse'
 import type { ISODateString } from './common'
@@ -30,6 +31,8 @@ export interface ErpDatabase {
   reservations: Reservation[]
   /** 앱이 만든 출고 이력 — 시트에는 없다 */
   shipments: Shipment[]
+  /** 앱이 만든 재고 변동 이력 — 예약·출고·입고가 어느 칸을 얼마나 움직였는가 */
+  stockMovements: StockMovement[]
   /** 재고를 바꾼 요청의 처리 이력 — 반복 요청을 막는 근거다 */
   processedRequests: ProcessedRequest[]
   /** 04_재고현황 기준시각. 준비 판정과 납기 계산의 '오늘' 이다. */
