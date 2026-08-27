@@ -41,7 +41,16 @@ interface IncomingRemainder {
   remaining: Quantity
 }
 
+/** 이 배정이 어느 문서에서 얼마를 가져가려 하는가 */
+interface IncomingTake {
+  document: IncomingDocument
+  quantity: Quantity
+}
+
 export interface Allocation {
+  /** 원장에서 덜어낼 자리 — commit 이 쓴다 */
+  key: string
+
   /** 배정을 시도한 시점에 원장에 남아 있던 가용재고 */
   availableQuantity: Quantity
   /** 그 시점에 이 배송일로 쓸 수 있던 입고예정 잔여 합계 */
@@ -55,6 +64,8 @@ export interface Allocation {
 
   /** 실제로 잡은 입고예정 문서들 */
   documents: IncomingDocument[]
+  /** 문서별로 가져갈 수량 — commit 이 쓴다 */
+  takes: IncomingTake[]
 }
 
 export type LedgerContext = Pick<ErpDatabase, 'inventories' | 'incomingDocuments'>
@@ -93,7 +104,7 @@ export function createAllocationLedger(ctx: LedgerContext): AllocationLedger {
 }
 
 /**
- * 소요량만큼 원장에서 덜어낸다.
+ * 소요량만큼 배정해 보되 **원장은 건드리지 않는다.**
  *
  * 가용재고를 먼저 쓰고, 모자란 만큼만 입고예정에서 당긴다. 순서가 중요하다 —
  * 입고예정을 먼저 쓰면 지금 당장 나갈 수 있는 주문이 도착을 기다리게 된다.
@@ -101,10 +112,12 @@ export function createAllocationLedger(ctx: LedgerContext): AllocationLedger {
  * 입고예정은 도착이 빠른 문서부터 쓴다. 늦게 오는 물량을 앞 주문이 잡아버리면
  * 뒤 주문은 더 늦은 배송일인데도 쓸 수 있는 문서가 사라진다.
  *
- * 부분 배정도 그대로 유지한다 — 주문 전체가 준비되지 않아도 앞선 주문의 몫은
- * 지켜져야 한다. 예약(reserveOrder)이 전량 아니면 전무인 것과는 별개다.
+ * 실제로 덜어내는 것은 `commit` 이 한다. 둘로 나눈 이유는 **재고 부족 주문이 재고를
+ * 선점하면 안 되기** 때문이다 — 한 품목이라도 모자라면 그 주문은 아무것도 잡지 않고,
+ * 잡을 뻔한 몫은 뒤 주문에 그대로 남는다. 판정을 마쳐야 그 주문이 부족한지 알 수 있으니
+ * 계산과 반영을 같은 함수에서 할 수 없다.
  */
-export function allocate(
+export function simulate(
   ledger: AllocationLedger,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
@@ -120,27 +133,49 @@ export function allocate(
   const incomingQuantity = usable.reduce((acc, remainder) => acc + remainder.remaining, 0)
 
   const allocatedFromStock = Math.min(requiredQuantity, availableQuantity)
-  ledger.stock.set(key, availableQuantity - allocatedFromStock)
 
   let outstanding = requiredQuantity - allocatedFromStock
   let allocatedFromIncoming = 0
   const documents: IncomingDocument[] = []
+  const takes: IncomingTake[] = []
 
   for (const remainder of usable) {
     if (outstanding <= 0) break
     const taken = Math.min(outstanding, remainder.remaining)
-    remainder.remaining -= taken
     outstanding -= taken
     allocatedFromIncoming += taken
     documents.push(remainder.document)
+    takes.push({ document: remainder.document, quantity: taken })
   }
 
   return {
+    key,
     availableQuantity,
     incomingQuantity,
     allocatedFromStock,
     allocatedFromIncoming,
     shortageQuantity: outstanding,
     documents,
+    takes,
+  }
+}
+
+/**
+ * 판정이 확정된 주문의 몫을 원장에서 덜어낸다.
+ *
+ * 부족 판정을 받은 주문에는 부르지 않는다. 그 주문이 잡을 뻔한 재고는 풀에 남아
+ * 뒤 주문이 쓸 수 있다 — 배송일이 늦은 주문이 먼저 가져가는 셈이지만, 나가지도 못할
+ * 주문이 재고를 붙잡아 뒤 주문까지 막는 것보다 낫다. (README '설계 결정')
+ */
+export function commit(ledger: AllocationLedger, allocations: readonly Allocation[]): void {
+  for (const allocation of allocations) {
+    const remainingStock = (ledger.stock.get(allocation.key) ?? 0) - allocation.allocatedFromStock
+    ledger.stock.set(allocation.key, remainingStock)
+
+    const bucket = ledger.incoming.get(allocation.key) ?? []
+    for (const take of allocation.takes) {
+      const remainder = bucket.find((candidate) => candidate.document === take.document)
+      if (remainder) remainder.remaining -= take.quantity
+    }
   }
 }

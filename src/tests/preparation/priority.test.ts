@@ -240,10 +240,15 @@ describe('배송일 우선순위', () => {
   })
 
   /**
-   * SHORTAGE 주문도 잡을 수 있는 만큼은 붙들고 있어야 한다.
-   * 놓아버리면 배송일이 늦은 주문이 가져가 버려, 발주가 도착해도 여전히 못 나간다.
+   * 재고 부족 주문은 재고를 선점하지 않는다 (명세 20-domain-logic L3).
+   *
+   * "일부 품목만 가능하다면 그 주문의 일부 수량을 먼저 잡아두지 않습니다" 는 예약뿐
+   * 아니라 판정에도 적용된다. 부족한 주문이 절반을 붙잡으면, 그 재고로 **전량 준비할 수
+   * 있었던** 뒤 주문까지 함께 막힌다 — 나가지도 못할 주문이 나갈 수 있는 주문을 막는다.
+   *
+   * 대가는 배송일이 늦은 주문이 먼저 가져간다는 것이다. 의도된 맞바꿈이다.
    */
-  it('SHORTAGE 주문도 배정한 몫을 유지한다', () => {
+  it('재고 부족 주문은 잡을 뻔한 몫을 뒤 주문에 남긴다', () => {
     const plan = planPreparation(
       db({
         inventories: [inventory('PIL-STD', 2)],
@@ -260,8 +265,38 @@ describe('배송일 우선순위', () => {
 
     const short = lineOf(entryOf(plan, 'ORD-SHORT').preparation, 'PIL-STD')
 
+    // 판정 자체는 있는 재고를 본다 — 부족수량은 2를 뺀 3이다
     expect(short.allocatedFromStock).toBe(2)
     expect(short.shortageQuantity).toBe(3)
-    expect(entryOf(plan, 'ORD-NEXT').preparation.status).toBe('SHORTAGE')
+    expect(entryOf(plan, 'ORD-SHORT').preparation.status).toBe('SHORTAGE')
+
+    // 그러나 원장에서 덜어내지 않았으므로 뒤 주문은 2개를 전량 쓸 수 있다
+    const next = entryOf(plan, 'ORD-NEXT')
+    expect(next.preparation.status).toBe('READY')
+    expect(lineOf(next.preparation, 'PIL-STD').allocatedFromStock).toBe(2)
+  })
+
+  /** 부족하지 않은 주문은 그대로 선점한다 — 위 규칙이 전체를 풀어놓는 것은 아니다 */
+  it('전량 준비되는 주문은 자기 몫을 확실히 잡는다', () => {
+    const plan = planPreparation(
+      db({
+        inventories: [inventory('PIL-STD', 2)],
+        orders: [
+          order({
+            id: 'ORD-FIRST',
+            deliveryDay: 22,
+            items: [{ itemCode: 'PIL-STD', quantity: 2 }],
+          }),
+          order({
+            id: 'ORD-LATER',
+            deliveryDay: 26,
+            items: [{ itemCode: 'PIL-STD', quantity: 1 }],
+          }),
+        ],
+      }),
+    )
+
+    expect(entryOf(plan, 'ORD-FIRST').preparation.status).toBe('READY')
+    expect(entryOf(plan, 'ORD-LATER').preparation.status).toBe('SHORTAGE')
   })
 })

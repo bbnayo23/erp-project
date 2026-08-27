@@ -10,7 +10,7 @@ import type {
 import { calculateOrderDemand } from '@/domain/order/calculateDemand'
 import { findWarehouse, isActiveWarehouse } from '@/domain/master/warehouseRules'
 import { documentIdsOf, resolveWaitingReason } from '@/domain/purchase/getRemainingQuantity'
-import { allocate, createAllocationLedger, type AllocationLedger } from './allocationLedger'
+import { commit, createAllocationLedger, simulate, type AllocationLedger } from './allocationLedger'
 import { isPreparationTarget, worstStatus } from './preparationRules'
 
 export type EvaluateOrderContext = Pick<
@@ -147,14 +147,13 @@ export function evaluateOrder(
     ])
   }
 
-  const items = demand.lines.map<PreparationItem>((line) => {
-    const allocation = allocate(
-      ledger,
-      line.itemCode,
-      order.warehouseCode,
-      line.quantity,
-      order.deliveryDate,
-    )
+  // 먼저 전부 계산만 한다. 원장에 반영하는 것은 주문 전체의 판정이 끝난 뒤다.
+  const allocations = demand.lines.map((line) =>
+    simulate(ledger, line.itemCode, order.warehouseCode, line.quantity, order.deliveryDate),
+  )
+
+  const items = demand.lines.map<PreparationItem>((line, index) => {
+    const allocation = allocations[index]!
 
     const status =
       allocation.shortageQuantity > 0
@@ -180,9 +179,20 @@ export function evaluateOrder(
     }
   })
 
+  const status = worstStatus(items.map((item) => item.status))
+
+  /*
+   * 재고 부족 주문은 아무것도 잡지 않는다.
+   *
+   * "일부 품목만 가능하다면 그 주문의 일부 수량을 먼저 잡아두지 않습니다" 는 예약뿐
+   * 아니라 판정에도 적용된다. 부족한 주문이 절반을 붙잡으면, 그 재고로 전량 준비할 수
+   * 있었던 뒤 주문까지 함께 막힌다.
+   */
+  if (status !== 'SHORTAGE') commit(ledger, allocations)
+
   return {
     orderId: order.orderId,
-    status: worstStatus(items.map((item) => item.status)),
+    status,
     items,
     excludedItemCodes: demand.excludedItemCodes,
     blockingReasons: [],
