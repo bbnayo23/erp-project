@@ -32,7 +32,7 @@ export const Header = styled.header`
   align-items: flex-start;
   gap: ${({ theme }) => theme.spacing[4]};
   flex-shrink: 0;
-  padding: ${({ theme }) => theme.spacing[5]} ${({ theme }) => theme.spacing[6]};
+  padding: ${({ theme }) => theme.spacing[3]} ${({ theme }) => theme.spacing[4]};
   border-bottom: ${({ theme }) => theme.borderWidth.thin} solid
     ${({ theme }) => theme.colors.border};
 `
@@ -57,7 +57,7 @@ export const Description = styled.p`
 `
 
 export const Body = styled.div`
-  padding: ${({ theme }) => theme.spacing[6]};
+  padding: ${({ theme }) => theme.spacing[4]};
   overflow-y: auto;
 `
 
@@ -67,7 +67,7 @@ export const Footer = styled.footer`
   justify-content: flex-end;
   gap: ${({ theme }) => theme.spacing[2]};
   flex-shrink: 0;
-  padding: ${({ theme }) => theme.spacing[4]} ${({ theme }) => theme.spacing[6]};
+  padding: ${({ theme }) => theme.spacing[3]} ${({ theme }) => theme.spacing[4]};
   border-top: ${({ theme }) => theme.borderWidth.thin} solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) => theme.colors.surfaceMuted};
   border-radius: 0 0 ${({ theme }) => theme.radius.lg} ${({ theme }) => theme.radius.lg};

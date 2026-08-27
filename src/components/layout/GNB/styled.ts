@@ -1,9 +1,14 @@
 import { NavLink } from 'react-router-dom'
 import styled from 'styled-components'
 
+/**
+ * 셸의 고정 칸.
+ *
+ * sticky 가 아니다 — 셸이 뷰포트 높이에 고정되고 본문만 굴러가므로, GNB 는 그냥
+ * 줄어들지 않는 첫 칸으로 두면 항상 제자리에 있다.
+ */
 export const Bar = styled.header`
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: ${({ theme }) => theme.zIndex.header};
   display: flex;
   align-items: center;

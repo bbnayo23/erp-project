@@ -3,7 +3,7 @@ import styled, { css } from 'styled-components'
 export const Input = styled.input<{ $numeric: boolean }>`
   height: ${({ theme }) => theme.controlHeight.md};
   padding-inline: ${({ theme }) => theme.spacing[3]};
-  border-radius: ${({ theme }) => theme.radius.md};
+  border-radius: ${({ theme }) => theme.radius.lg};
   border: ${({ theme }) => theme.borderWidth.thin} solid ${({ theme }) => theme.colors.borderStrong};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};

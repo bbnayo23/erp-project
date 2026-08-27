@@ -20,10 +20,34 @@ const PATHS: Record<IconName, string> = {
   clock:
     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm-1 3v6l5 3 1-1.7-4-2.3V7h-2Z',
   chevronDown: 'M6 9.5l6 6 6-6',
+  reset: 'M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4',
+  plus: 'M12 5v14M5 12h14',
+  inbound: 'M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19h16',
+  outbound: 'M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M4 19h16',
+  lock: 'M6 11h12v9H6v-9Zm2.5 0V7.5a3.5 3.5 0 1 1 7 0V11',
+  unlock: 'M6 11h12v9H6v-9Zm2.5 0V7.5a3.5 3.5 0 0 1 6.9-.9',
+  back: 'M19 12H5m0 0 6-6m-6 6 6 6',
 }
 
-/** close·arrowRight·check 는 선으로, 나머지는 면으로 그린다 */
-const STROKED = new Set<IconName>(['close', 'arrowRight', 'check', 'chevronDown'])
+/**
+ * 선으로 그리는 아이콘.
+ *
+ * 버튼 안에 들어가는 아이콘은 전부 선이다 — 글자 옆에 면으로 채운 도형이 서면 그쪽이
+ * 먼저 읽혀 라벨이 뒤로 밀린다. 면으로 그리는 것은 메뉴 아이콘처럼 혼자 서는 것뿐이다.
+ */
+const STROKED = new Set<IconName>([
+  'close',
+  'arrowRight',
+  'check',
+  'chevronDown',
+  'reset',
+  'plus',
+  'inbound',
+  'outbound',
+  'lock',
+  'unlock',
+  'back',
+])
 
 export function Icon({ name, size = 18, className }: IconProps) {
   const stroked = STROKED.has(name)

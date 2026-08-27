@@ -6,6 +6,8 @@ import {
   fontFamily,
   fontSize,
   fontWeight,
+  motion,
+  reducedMotion,
   layout,
   letterSpacing,
   lineHeight,
@@ -13,6 +15,7 @@ import {
   palette,
   radius,
   spacing,
+  tableCell,
   zIndex,
 } from './tokens'
 
@@ -77,6 +80,17 @@ export interface SemanticColors {
   info: string
   infoSubtle: string
   infoText: string
+
+  /**
+   * 어두운 집중 면 — 화면에서 지금 일하는 자리 한 곳.
+   *
+   * 다크 모드에서도 배경보다 어두운 쪽으로 간다. 라이트에서만 어둡게 하면 다크 모드에서
+   * 강조가 사라진다.
+   */
+  focusSurface: string
+  focusBorder: string
+  focusText: string
+  focusMuted: string
 }
 
 export interface ShadowScale {
@@ -90,6 +104,8 @@ export interface ShadowScale {
 }
 
 const lightColors: SemanticColors = {
+  // 카드가 배경 위에 놓인 면으로 읽히려면 페이지가 카드보다 한 톤 낮아야 한다.
+  // 둘이 같은 흰색이면 테두리만 남아 카드가 종이에 그린 사각형처럼 보인다.
   background: palette.slate[50],
   surface: palette.white,
   surfaceMuted: palette.slate[50],
@@ -138,6 +154,11 @@ const lightColors: SemanticColors = {
   info: palette.violet[600],
   infoSubtle: palette.violet[50],
   infoText: palette.violet[700],
+
+  focusSurface: palette.navy[800],
+  focusBorder: palette.navy[700],
+  focusText: palette.white,
+  focusMuted: palette.navy[200],
 }
 
 const darkColors: SemanticColors = {
@@ -190,6 +211,11 @@ const darkColors: SemanticColors = {
   info: palette.violet[400],
   infoSubtle: 'rgba(122, 90, 248, 0.16)',
   infoText: palette.violet[300],
+
+  focusSurface: palette.slate[950],
+  focusBorder: palette.slate[800],
+  focusText: palette.white,
+  focusMuted: palette.slate[400],
 }
 
 const lightShadow: ShadowScale = {
@@ -229,6 +255,9 @@ const shared = {
     lineHeight,
     letterSpacing,
   },
+  motion,
+  reducedMotion,
+  tableCell,
   palette,
 } as const
 

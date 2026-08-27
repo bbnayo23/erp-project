@@ -28,7 +28,7 @@ export const Field = styled.select`
   height: ${({ theme }) => theme.controlHeight.md};
   /* 오른쪽은 화살표 자리를 비운다 — 긴 옵션 글자가 화살표 밑으로 들어가면 안 된다 */
   padding: 0 ${({ theme }) => theme.spacing[8]} 0 ${({ theme }) => theme.spacing[3]};
-  border-radius: ${({ theme }) => theme.radius.md};
+  border-radius: ${({ theme }) => theme.radius.lg};
   border: ${({ theme }) => theme.borderWidth.thin} solid ${({ theme }) => theme.colors.borderStrong};
   background: ${({ theme }) => theme.colors.surface};
   /* 상속에 기대지 않는다 — autofill·네이티브 스타일이 끼면 배경만 바뀌고 글자는 남는다 */
@@ -38,9 +38,8 @@ export const Field = styled.select`
   line-height: 1;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition:
-    border-color ${({ theme }) => theme.duration.fast} ${({ theme }) => theme.easing.standard},
-    box-shadow ${({ theme }) => theme.duration.fast} ${({ theme }) => theme.easing.standard};
+  transition: border-color ${({ theme }) => theme.duration.fast}
+    ${({ theme }) => theme.easing.standard};
 
   &:hover:not(:disabled) {
     border-color: ${({ theme }) => theme.colors.borderFocus};

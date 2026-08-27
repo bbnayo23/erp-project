@@ -20,8 +20,10 @@ export const TitleGroup = styled.div`
 `
 
 export const Title = styled.h1`
-  font-size: ${({ theme }) => theme.font.size['2xl']};
-  font-weight: ${({ theme }) => theme.font.weight.semibold};
+  font-size: ${({ theme }) => theme.font.size['3xl']};
+  font-weight: ${({ theme }) => theme.font.weight.bold};
+  letter-spacing: ${({ theme }) => theme.font.letterSpacing.tight};
+  line-height: ${({ theme }) => theme.font.lineHeight.tight};
   color: ${({ theme }) => theme.colors.text};
 `
 
