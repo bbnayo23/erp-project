@@ -1,4 +1,11 @@
-import type { ISODateString, ItemType, Quantity, SerialStatus } from '@/types'
+import type {
+  ISODateString,
+  ItemCategory,
+  ItemType,
+  Quantity,
+  SerialStatus,
+  StockMovementKind,
+} from '@/types'
 import type { StatusDescriptor } from '@/components/common/StatusBadge'
 
 /**
@@ -32,6 +39,8 @@ export interface StockRow {
   itemCode: string
   itemName: string
   itemType: ItemType | '-'
+  /** 01_품목 분류 — 매트리스 · 프레임 · 침구 … */
+  category: ItemCategory | '-'
   /** 개체 단위로 관리되는 품목인가 — 개체재고를 열 수 있다 */
   serialManaged: boolean
 
@@ -83,4 +92,61 @@ export interface InventoryFilter {
   warehouseCode: string
   /** 품목코드 · 품목명 부분 일치 */
   keyword: string
+}
+
+/**
+ * 이 품목을 기다리는 주문 한 줄.
+ *
+ * 재고 화면에서 숫자가 모자란 것을 봤을 때 담당자가 바로 묻는 것은 '그래서 어느 주문이
+ * 막히는가' 다. 배정 순서(우선순위)를 함께 보여야 어느 주문부터 풀리는지 알 수 있다.
+ */
+export interface ItemDemandRow {
+  orderId: string
+  /** 배정 순서 — 배송일이 빠른 주문이 1번이다 */
+  priority: number
+  deliveryLabel: string
+  requiredQuantity: Quantity
+  shortageQuantity: Quantity
+  statusDescriptor: StatusDescriptor
+}
+
+/** 이 품목으로 걸려 있는 입고예정 문서 한 줄 */
+export interface ItemDocumentRow {
+  documentId: string
+  typeLabel: string
+  supplierName: string
+  plannedQuantity: Quantity
+  receivedQuantity: Quantity
+  remainingQuantity: Quantity
+  availableLabel: string
+  stageDescriptor: StatusDescriptor
+  /** 어느 주문의 부족분에서 나온 문서인가 */
+  relatedOrderId?: string
+}
+
+/**
+ * 재고 변동 이력 한 줄.
+ *
+ * 변화량과 변화 후 잔액을 함께 보여준다. 화면의 현재 숫자에서 거꾸로 짚어 검산할 수
+ * 있어야 이력이 쓸모가 있다.
+ */
+export interface StockMovementRow {
+  movementId: string
+  kind: StockMovementKind
+  kindDescriptor: StatusDescriptor
+  /** 현재고 변화량 — 화면 라벨과 달리 부호가 붙은 숫자 그대로다 */
+  currentDelta: Quantity
+  reservedDelta: Quantity
+  /** '+3' · '−2' · '-' */
+  currentDeltaLabel: string
+  reservedDeltaLabel: string
+  currentQuantity: Quantity
+  reservedQuantity: Quantity
+  itemCode: string
+  itemName: string
+  warehouseCode: string
+  warehouseName: string
+  orderId?: string
+  documentId?: string
+  occurredLabel: string
 }

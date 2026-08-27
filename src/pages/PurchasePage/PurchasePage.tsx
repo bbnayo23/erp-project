@@ -1,24 +1,27 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/common/Button'
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable'
-import { Notice } from '@/components/common/Notice'
+import { Icon } from '@/components/common/Icon'
+import { COLUMN_WIDTH, DataTable, type DataTableColumn } from '@/components/common/DataTable'
 import { Panel } from '@/components/common/Panel'
 import { Select } from '@/components/common/Select'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { SummaryCards } from '@/components/common/SummaryCards'
 import { TextInput } from '@/components/common/TextInput'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { FreshnessBar } from '@/features/audit'
 import type {
   DocumentTypeFilter,
   IncomingRow,
   PurchaseStageFilter,
+  ReceiptHistoryRow,
 } from '@/features/purchase/types'
-import { formatDateTime } from '@/utils/date'
+import { useFreshness } from '@/store/hooks'
 import { usePurchasePage } from './hooks'
 import {
   ArrivalLabel,
   DocumentId,
   FilterSpacer,
+  Increase,
   Layout,
   Muted,
   Note,
@@ -55,21 +58,21 @@ export function PurchasePage() {
     documentTypeOptions,
     warehouseOptions,
     summaryItems,
-    notice,
-    dismissNotice,
     receiptQuantity,
     setReceiptQuantity,
     receive,
     inspect,
     rowTone,
-    baseAt,
+    history,
   } = usePurchasePage()
+
+  const freshness = useFreshness()
 
   const columns: DataTableColumn<IncomingRow>[] = [
     {
       key: 'documentId',
       header: '문서번호',
-      width: '210px',
+      width: COLUMN_WIDTH.documentId,
       render: (row) => (
         <StackCell>
           <DocumentId>{row.documentId}</DocumentId>
@@ -95,20 +98,20 @@ export function PurchasePage() {
         </StackCell>
       ),
     },
-    { key: 'warehouseName', header: '입고창고', width: '120px' },
-    { key: 'plannedQuantity', header: '계획', width: '70px', numeric: true },
-    { key: 'receivedQuantity', header: '입고', width: '70px', numeric: true },
+    { key: 'warehouseName', header: '입고창고', width: COLUMN_WIDTH.warehouse },
+    { key: 'plannedQuantity', header: '계획', width: COLUMN_WIDTH.quantity, numeric: true },
+    { key: 'receivedQuantity', header: '입고', width: COLUMN_WIDTH.quantity, numeric: true },
     {
       key: 'remainingQuantity',
       header: '잔여',
-      width: '70px',
+      width: COLUMN_WIDTH.quantity,
       numeric: true,
       render: (row) => (row.remainingQuantity > 0 ? row.remainingQuantity : <Muted>0</Muted>),
     },
     {
       key: 'availableLabel',
       header: '사용가능예정일',
-      width: '150px',
+      width: COLUMN_WIDTH.dateNote,
       render: (row) => (
         <StackCell>
           <span>{row.availableLabel}</span>
@@ -119,18 +122,20 @@ export function PurchasePage() {
     {
       key: 'progressStatus',
       header: '진행상태',
-      width: '140px',
+      width: COLUMN_WIDTH.statusNote,
       render: (row) => (
         <StackCell>
           <span>{row.progressStatus}</span>
           {row.inspectionStatus !== '해당 없음' && <Note>검사 {row.inspectionStatus}</Note>}
+          {/* 확정여부는 준비 판단에 쓸 수 있는 물량인지를 가른다 — 진행상태와 같이 읽힌다 */}
+          <Note>{row.confirmed ? '확정' : '미확정'}</Note>
         </StackCell>
       ),
     },
     {
       key: 'stage',
       header: '단계',
-      width: '230px',
+      width: COLUMN_WIDTH.statusNote,
       render: (row) => (
         <StackCell>
           <StatusBadge descriptor={row.stageDescriptor} size="sm" />
@@ -141,7 +146,7 @@ export function PurchasePage() {
     {
       key: 'action',
       header: '처리',
-      width: '200px',
+      width: COLUMN_WIDTH.action,
       align: 'right',
       render: (row) => {
         if (row.canInspect) {
@@ -164,7 +169,12 @@ export function PurchasePage() {
               value={receiptQuantity(row.documentId)}
               onChange={(event) => setReceiptQuantity(row.documentId, event.target.value)}
             />
-            <Button variant="primary" size="sm" onClick={() => receive(row.documentId)}>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Icon name="inbound" size={13} />}
+              onClick={() => receive(row.documentId)}
+            >
               입고
             </Button>
           </ReceiveControl>
@@ -173,23 +183,73 @@ export function PurchasePage() {
     },
   ]
 
+  const historyColumns: DataTableColumn<ReceiptHistoryRow>[] = [
+    {
+      key: 'documentId',
+      header: '문서번호',
+      width: COLUMN_WIDTH.documentId,
+      render: (row) => <DocumentId>{row.documentId ?? '-'}</DocumentId>,
+    },
+    {
+      key: 'itemName',
+      header: '품목',
+      render: (row) => (
+        <StackCell>
+          <span>{row.itemName}</span>
+          <Note>
+            {row.itemCode} · {row.warehouseName}
+          </Note>
+        </StackCell>
+      ),
+    },
+    {
+      key: 'receivedQuantity',
+      header: '입고수량',
+      width: COLUMN_WIDTH.quantity,
+      numeric: true,
+      render: (row) => <Increase>+{row.receivedQuantity}</Increase>,
+    },
+    {
+      key: 'currentQuantity',
+      header: '입고 후 현재고',
+      width: COLUMN_WIDTH.quantityWide,
+      numeric: true,
+    },
+    {
+      key: 'orderId',
+      header: '풀린 주문',
+      width: COLUMN_WIDTH.statusNote,
+      render: (row) => {
+        // 재고를 채우려고 미리 낸 발주는 걸린 주문이 없다 — 빈 칸이 정상이다
+        if (!row.orderId) return <Muted>-</Muted>
+
+        return (
+          <StackCell>
+            <Link to={`/orders/${row.orderId}`}>{row.orderId}</Link>
+            {row.orderStatusDescriptor && (
+              <StatusBadge descriptor={row.orderStatusDescriptor} size="sm" />
+            )}
+          </StackCell>
+        )
+      },
+    },
+    { key: 'occurredLabel', header: '처리시각', width: COLUMN_WIDTH.dateTime },
+  ]
+
   return (
     <Layout>
       <PageHeader
-        title="발주 현황"
-        description={`문서를 만든 것만으로 현재고는 늘지 않습니다. 입고해야 늘고, 생산품은 품질검사를 통과해야 입고할 수 있습니다. 기준시각 ${formatDateTime(baseAt)}`}
+        title="발주"
+        description={
+          <>
+            문서를 만든 것만으로 현재고는 늘지 않습니다. 입고해야 늘고, 생산품은 품질검사를 통과해야
+            입고할 수 있습니다.
+            <FreshnessBar freshness={freshness} />
+          </>
+        }
       />
 
       <SummaryCards items={summaryItems} label="입고예정 단계 요약" />
-
-      {notice && (
-        <Notice tone={notice.tone}>
-          {notice.message}
-          <Button variant="link" size="sm" onClick={dismissNotice}>
-            닫기
-          </Button>
-        </Notice>
-      )}
 
       <Panel
         filter={
@@ -221,7 +281,12 @@ export function PurchasePage() {
               onChange={(event) => setFilter({ keyword: event.target.value })}
             />
             {filtered && (
-              <Button variant="ghost" size="sm" onClick={resetFilter}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilter}
+                leftIcon={<Icon name="reset" size={13} />}
+              >
                 필터 초기화
               </Button>
             )}
@@ -246,7 +311,12 @@ export function PurchasePage() {
           }
           emptyAction={
             filtered ? (
-              <Button variant="secondary" size="sm" onClick={resetFilter}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={resetFilter}
+                leftIcon={<Icon name="reset" size={13} />}
+              >
                 필터 초기화
               </Button>
             ) : (
@@ -257,6 +327,21 @@ export function PurchasePage() {
               </Link>
             )
           }
+        />
+      </Panel>
+
+      <Panel
+        title="입고 이력"
+        description="입고한 수량만큼 현재고가 늘었는지, 그 물건을 기다리던 주문이 풀렸는지 확인합니다. 준비상태는 지금 다시 판정한 값입니다. 같은 입고 요청을 두 번 보내도 한 줄만 쌓입니다."
+      >
+        <DataTable
+          columns={historyColumns}
+          data={history}
+          rowKey={(row) => row.movementId}
+          stickyHeader
+          maxHeight="320px"
+          emptyTitle="아직 입고한 문서가 없습니다"
+          emptyDescription="입고를 처리하면 현재고가 얼마나 늘었고 어느 주문이 풀렸는지 여기에 쌓입니다."
         />
       </Panel>
     </Layout>

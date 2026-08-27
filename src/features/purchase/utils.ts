@@ -128,6 +128,7 @@ export function toIncomingRow(
 
     progressStatus: document.status,
     inspectionStatus: document.inspectionStatus,
+    confirmed: document.confirmed,
 
     stage,
     stageDescriptor: PURCHASE_STAGE[stage],
@@ -209,6 +210,7 @@ export function toSummaryItems(
   ): SummaryCardItem => ({
     label,
     value,
+
     ...extra,
     ...(selection
       ? {
@@ -219,26 +221,36 @@ export function toSummaryItems(
   })
 
   return [
-    card(
-      '입고예정 문서',
-      `${rows.length}건`,
-      'ALL',
+    card('입고예정 문서 전체', `${rows.length}건`, 'ALL', {
       // 지연이 있으면 잔여 합계보다 그쪽이 먼저 눈에 걸려야 한다
-      overdue > 0
+      ...(overdue > 0
         ? { hint: `도착 지연 ${overdue}건`, tone: 'danger' as const }
-        : { hint: `잔여 ${sumBy(rows, (row) => row.remainingQuantity)}개` },
-    ),
-    card('검사 대기', `${countOf('INSPECT')}건`, 'INSPECT', {
-      hint: '통과시키면 입고할 수 있습니다',
+        : { hint: `잔여 ${sumBy(rows, (row) => row.remainingQuantity)}개` }),
+      action: '전체 보기',
+    }),
+    card('검사할 것', `${countOf('INSPECT')}건`, 'INSPECT', {
+      hint: '통과시켜야 입고할 수 있습니다',
+      action: '검사할 문서 보기',
       tone: 'warning' as const,
     }),
-    card('입고 대기', `${countOf('ARRIVED')}건`, 'ARRIVED', {
+    card('입고할 것', `${countOf('ARRIVED')}건`, 'ARRIVED', {
       // 지금 손대야 하는 단계 — 화면에서 포인트 색을 받는 유일한 지표다
-      ...(arrivedQuantity > 0 ? { hint: `잔여 ${arrivedQuantity}개`, tone: 'point' as const } : {}),
+      ...(arrivedQuantity > 0 ? { hint: `잔여 ${arrivedQuantity}개` } : { hint: '도착했습니다' }),
+      action: '입고할 문서 보기',
+      tone: 'point' as const,
     }),
-    card('도착 예정', `${countOf('SCHEDULED')}건`, 'SCHEDULED'),
-    card('미확정', `${countOf('DRAFT')}건`, 'DRAFT', { hint: '입고예정으로 세지 않습니다' }),
-    card('입고 완료', `${countOf('DONE')}건`, 'DONE'),
+    card('기다리는 것', `${countOf('SCHEDULED')}건`, 'SCHEDULED', {
+      hint: '아직 도착하지 않았습니다',
+      action: '도착 예정 보기',
+    }),
+    card('확정 안 됨', `${countOf('DRAFT')}건`, 'DRAFT', {
+      hint: '판정에 쓰이지 않습니다',
+      action: '미확정 문서 보기',
+    }),
+    card('끝난 것', `${countOf('DONE')}건`, 'DONE', {
+      hint: '계획수량을 전량 입고했습니다',
+      action: '입고 완료 보기',
+    }),
   ]
 }
 

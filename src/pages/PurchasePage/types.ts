@@ -1,14 +1,8 @@
 import type { ISODateString } from '@/types'
 import type { RowTone } from '@/components/common/DataTable'
-import type { NoticeTone } from '@/components/common/Notice'
 import type { SelectOption } from '@/components/common/Select'
 import type { SummaryCardItem } from '@/components/common/SummaryCards'
-import type { IncomingRow, PurchaseFilter } from '@/features/purchase/types'
-
-export interface PurchaseNotice {
-  tone: NoticeTone
-  message: string
-}
+import type { IncomingRow, PurchaseFilter, ReceiptHistoryRow } from '@/features/purchase/types'
 
 /**
  * usePurchasePage 의 반환 형태.
@@ -37,14 +31,14 @@ export interface PurchasePageState {
   /** 행 좌측 상태 레일 — 지연된 문서는 단계와 무관하게 붉게 선다 */
   rowTone: (row: IncomingRow) => RowTone
 
-  notice: PurchaseNotice | null
-  dismissNotice: () => void
-
   /** 입고 수량 입력 — 문서별로 들고 있는다 */
   receiptQuantity: (documentId: string) => string
   setReceiptQuantity: (documentId: string, value: string) => void
   receive: (documentId: string) => void
   inspect: (documentId: string) => void
+
+  /** 입고 처리 이력 — 방금 처리한 것이 위로 온다 */
+  history: ReceiptHistoryRow[]
 
   /** 07_입고예정의 '오늘' — 도착 지연 판정의 기준이다 */
   baseAt: ISODateString

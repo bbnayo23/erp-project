@@ -6,23 +6,23 @@ import { PreparationPage } from '@/pages/PreparationPage'
 import { PurchasePage } from '@/pages/PurchasePage'
 
 /**
- * 재고 · 수주 · 발주 세 메뉴가 모두 실제 화면을 가리킨다.
- * 수주는 배송 준비 현황으로 들어간다 — 이 프로젝트의 중심 화면이다.
+ * 제품 · 주문 · 발주 세 메뉴가 모두 실제 화면을 가리킨다.
  *
- * 첫 화면도 준비 현황으로 보낸다. 담당자가 아침에 여는 화면이 '오늘 무엇을 내보낼 수
- * 있는가' 이기 때문이다.
+ * **첫 화면은 제품이다.** 이 앱의 모든 판정은 '지금 창고에 무엇이 얼마나 있는가' 에서
+ * 출발한다. 주문 화면의 준비상태도, 발주 화면의 부족수량도 전부 그 숫자에서 나온 결과다.
+ * 결과부터 보여주면 담당자는 그 숫자를 믿을 근거를 화면에서 찾지 못한다.
  */
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/orders" replace /> },
-      { path: 'inventory', element: <InventoryPage /> },
+      { index: true, element: <Navigate to="/items" replace /> },
+      { path: 'items', element: <InventoryPage /> },
       { path: 'orders', element: <PreparationPage /> },
       { path: 'orders/:orderId', element: <OrderDetailPage /> },
-      { path: 'purchase', element: <PurchasePage /> },
-      { path: '*', element: <Navigate to="/orders" replace /> },
+      { path: 'inbound', element: <PurchasePage /> },
+      { path: '*', element: <Navigate to="/items" replace /> },
     ],
   },
 ])

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { planPreparation, type PreparationPlan } from '@/domain/preparation/planPreparation'
+import { toFreshness, toRecentChanges, type DataFreshness } from '@/features/audit'
 import { useErpStore } from './erpStore'
 
 /**
@@ -34,5 +35,37 @@ export function usePreparationPlan(): PreparationPlan {
         reservations,
       }),
     [items, bundleComponents, warehouses, inventories, incomingDocuments, orders, reservations],
+  )
+}
+
+/**
+ * 화면이 보여주는 숫자의 출처.
+ *
+ * 세 화면 머리말이 같은 줄을 쓴다 — 화면마다 다른 자리에 있으면 담당자가 매번 찾는다.
+ */
+export function useFreshness(): DataFreshness {
+  const stockMovements = useErpStore((state) => state.stockMovements)
+  const items = useErpStore((state) => state.items)
+  const baseAt = useErpStore((state) => state.baseAt)
+
+  return useMemo(
+    () => toFreshness({ stockMovements, items, baseAt }),
+    [stockMovements, items, baseAt],
+  )
+}
+
+/**
+ * 방금 처리가 건드린 품목@창고.
+ *
+ * 표에서 그 행을 잠시 표시해, 담당자가 자기 조작이 의도한 자리에 반영됐는지 눈으로
+ * 확인할 수 있게 한다.
+ */
+export function useRecentChanges(): Map<string, string> {
+  const stockMovements = useErpStore((state) => state.stockMovements)
+  const items = useErpStore((state) => state.items)
+
+  return useMemo(
+    () => new Map(toRecentChanges({ stockMovements, items }).map((c) => [c.key, c.label])),
+    [stockMovements, items],
   )
 }

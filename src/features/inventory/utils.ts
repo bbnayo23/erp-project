@@ -4,6 +4,8 @@ import type {
   ItemCode,
   SerialInventory,
   SerialStatus,
+  StockMovement,
+  StockMovementKind,
   Warehouse,
   WarehouseCode,
 } from '@/types'
@@ -17,9 +19,22 @@ import {
   calculateIncomingQuantity,
   isIncomingPlanned,
 } from '@/domain/purchase/getRemainingQuantity'
-import { formatDate } from '@/utils/date'
+import type { PreparationPlan } from '@/domain/preparation/planPreparation'
+import { PREPARATION_STATUS, RESERVED_STATUS } from '@/features/preparation/utils'
+import { DOCUMENT_TYPE_LABEL, PURCHASE_STAGE, stageOf } from '@/features/purchase/utils'
+import { findSupplier } from '@/domain/master/supplierRules'
+import { formatDate, formatDateTime } from '@/utils/date'
 import { sumBy } from '@/utils/number'
-import type { InventoryFilter, SerialRow, StockLevel, StockLevelFilter, StockRow } from './types'
+import type {
+  InventoryFilter,
+  ItemDemandRow,
+  ItemDocumentRow,
+  SerialRow,
+  StockLevel,
+  StockLevelFilter,
+  StockMovementRow,
+  StockRow,
+} from './types'
 
 /**
  * 재고 상태 → 화면 표시.
@@ -112,6 +127,7 @@ function toStockRow(
     // 등록되지 않은 품목은 코드를 그대로 보여준다 — 이름이 없다고 행을 숨기면 놓친다
     itemName: item?.itemName ?? itemCode,
     itemType: item?.itemType ?? '-',
+    category: item?.category ?? '-',
     serialManaged,
 
     warehouseCode,
@@ -256,6 +272,7 @@ export function toSummaryItems(
   ): SummaryCardItem => ({
     label,
     value,
+
     ...extra,
     ...(selection
       ? {
@@ -286,9 +303,20 @@ export function toSummaryItems(
       value: `${sumBy(rows, (row) => row.availableQuantity)}개`,
       hint: '현재고 − 예약수량',
     },
-    card('배정 가능', `${countOf('AVAILABLE')}건`, 'AVAILABLE', { tone: 'point' as const }),
-    card('전량 예약', `${countOf('RESERVED')}건`, 'RESERVED', { tone: 'warning' as const }),
-    card('입고 예정', `${countOf('INCOMING')}건`, 'INCOMING', { hint: '현재고 없이 대기' }),
+    card('지금 쓸 수 있음', `${countOf('AVAILABLE')}건`, 'AVAILABLE', {
+      hint: '가용재고가 남아 있습니다',
+      action: '배정 가능한 재고 보기',
+      tone: 'point' as const,
+    }),
+    card('있는데 못 씀', `${countOf('RESERVED')}건`, 'RESERVED', {
+      hint: '전량 다른 주문에 예약됐습니다',
+      action: '전량 예약된 재고 보기',
+      tone: 'warning' as const,
+    }),
+    card('들어올 예정', `${countOf('INCOMING')}건`, 'INCOMING', {
+      hint: '현재고 없이 입고를 기다립니다',
+      action: '입고 예정 보기',
+    }),
   ]
 }
 
@@ -305,3 +333,112 @@ export const warehouseFilterOptions = (warehouses: readonly Warehouse[]) => [
     label: warehouse.warehouseName,
   })),
 ]
+
+/**
+ * 이 품목·창고를 기다리는 주문.
+ *
+ * 판정은 계획이 이미 끝냈다 — 여기서 다시 세지 않고 원장이 나눠 준 결과를 옮기기만
+ * 한다. 배정 순서를 함께 보여야 어느 주문부터 풀리는지 알 수 있다.
+ */
+export function toItemDemandRows(
+  plan: PreparationPlan,
+  itemCode: ItemCode,
+  warehouseCode: WarehouseCode,
+): ItemDemandRow[] {
+  return plan.entries
+    .filter((entry) => entry.order.warehouseCode === warehouseCode)
+    .flatMap((entry) => {
+      const line = entry.preparation.items.find((item) => item.itemCode === itemCode)
+      if (!line) return []
+
+      return [
+        {
+          orderId: entry.order.orderId,
+          priority: entry.priority,
+          deliveryLabel: formatDate(entry.order.deliveryDate),
+          requiredQuantity: line.requiredQuantity,
+          shortageQuantity: line.shortageQuantity,
+          statusDescriptor: entry.reserved
+            ? RESERVED_STATUS
+            : PREPARATION_STATUS[entry.preparation.status],
+        },
+      ]
+    })
+}
+
+/** 이 품목·창고로 걸려 있는 입고예정 문서. 미확정 문서도 남긴다 — 확정하면 쓸 물량이다. */
+export function toItemDocumentRows(
+  ctx: Pick<ErpDatabase, 'incomingDocuments' | 'suppliers' | 'baseAt'>,
+  itemCode: ItemCode,
+  warehouseCode: WarehouseCode,
+): ItemDocumentRow[] {
+  return ctx.incomingDocuments
+    .filter(
+      (document) => document.itemCode === itemCode && document.warehouseCode === warehouseCode,
+    )
+    .map((document) => ({
+      documentId: document.documentId,
+      typeLabel: DOCUMENT_TYPE_LABEL[document.documentType],
+      supplierName:
+        findSupplier(ctx.suppliers, document.supplierCode)?.supplierName ?? document.supplierCode,
+      plannedQuantity: document.plannedQuantity,
+      receivedQuantity: document.receivedQuantity,
+      remainingQuantity: document.plannedQuantity - document.receivedQuantity,
+      availableLabel: formatDate(document.availableDate),
+      stageDescriptor: PURCHASE_STAGE[stageOf(document, ctx.baseAt)],
+      ...(document.relatedOrderId ? { relatedOrderId: document.relatedOrderId } : {}),
+    }))
+}
+
+export const MOVEMENT_KIND: Record<StockMovementKind, StatusDescriptor> = {
+  RESERVE: { label: '예약', tone: 'primary' },
+  RELEASE: { label: '예약 해제', tone: 'neutral' },
+  SHIP: { label: '출고', tone: 'info' },
+  RECEIVE: { label: '입고', tone: 'success' },
+}
+
+/** 0 은 '-' 로 둔다. 예약은 현재고를 건드리지 않으므로 0 을 숫자로 적으면 움직인 것처럼 보인다. */
+const deltaLabel = (delta: number): string => {
+  if (delta === 0) return '-'
+  return delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`
+}
+
+/**
+ * 재고 변동 이력 → 화면 표시. 최근 처리가 위로 온다.
+ *
+ * 기준시각을 고정해 쓰므로 시각만으로는 순서를 가릴 수 없다. 기록된 순서를 뒤집는다.
+ */
+export function toMovementRows(
+  movements: readonly StockMovement[],
+  ctx: Pick<ErpDatabase, 'items' | 'warehouses'>,
+  filter?: { itemCode?: ItemCode; warehouseCode?: WarehouseCode; documentId?: string },
+): StockMovementRow[] {
+  return movements
+    .filter((movement) => {
+      if (filter?.itemCode && movement.itemCode !== filter.itemCode) return false
+      if (filter?.warehouseCode && movement.warehouseCode !== filter.warehouseCode) return false
+      if (filter?.documentId && movement.documentId !== filter.documentId) return false
+      return true
+    })
+    .map((movement) => ({
+      movementId: movement.movementId,
+      kind: movement.kind,
+      kindDescriptor: MOVEMENT_KIND[movement.kind],
+      currentDelta: movement.currentDelta,
+      reservedDelta: movement.reservedDelta,
+      currentDeltaLabel: deltaLabel(movement.currentDelta),
+      reservedDeltaLabel: deltaLabel(movement.reservedDelta),
+      currentQuantity: movement.currentQuantity,
+      reservedQuantity: movement.reservedQuantity,
+      itemCode: movement.itemCode,
+      itemName: findItem(ctx.items, movement.itemCode)?.itemName ?? movement.itemCode,
+      warehouseCode: movement.warehouseCode,
+      warehouseName:
+        findWarehouse(ctx.warehouses, movement.warehouseCode)?.warehouseName ??
+        movement.warehouseCode,
+      ...(movement.orderId ? { orderId: movement.orderId } : {}),
+      ...(movement.documentId ? { documentId: movement.documentId } : {}),
+      occurredLabel: formatDateTime(movement.occurredAt),
+    }))
+    .reverse()
+}

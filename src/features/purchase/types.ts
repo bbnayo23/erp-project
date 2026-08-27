@@ -31,6 +31,30 @@ export type PurchaseStage =
   | 'DONE'
 
 export type PurchaseStageFilter = PurchaseStage | 'ALL'
+
+/**
+ * 입고 처리 이력 한 줄.
+ *
+ * 발주 화면에서 담당자가 입고를 누른 뒤 확인해야 하는 것은 둘이다 — 현재고가 정말
+ * 늘었는가, 그 물건을 기다리던 주문이 풀렸는가. 문서 목록은 첫 번째만 답하므로
+ * 주문의 지금 준비상태를 함께 붙인다.
+ */
+export interface ReceiptHistoryRow {
+  movementId: string
+  documentId?: string
+  itemCode: string
+  itemName: string
+  warehouseName: string
+  /** 이 입고로 늘어난 수량 */
+  receivedQuantity: Quantity
+  /** 입고 뒤 현재고 */
+  currentQuantity: Quantity
+  /** 이 문서가 풀어주려던 주문 */
+  orderId?: string
+  /** 그 주문의 지금 준비상태 — 입고로 무엇이 바뀌었는지 */
+  orderStatusDescriptor?: StatusDescriptor
+  occurredLabel: string
+}
 export type DocumentTypeFilter = IncomingDocumentType | 'ALL'
 
 /**
@@ -69,6 +93,8 @@ export interface IncomingRow {
 
   progressStatus: IncomingProgressStatus
   inspectionStatus: InspectionStatus
+  /** 07_입고예정 확정여부 — 미확정 문서는 입고예정으로 세지 않는다 */
+  confirmed: boolean
 
   stage: PurchaseStage
   stageDescriptor: StatusDescriptor

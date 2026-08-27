@@ -1,22 +1,13 @@
 import styled from 'styled-components'
-
-/**
- * 화면 안내의 대상 표시용 껍데기.
- *
- * `data-tour` 를 붙일 실제 박스가 필요하다 — 안내는 `getBoundingClientRect` 로 위치를
- * 재므로 `display: contents` 로는 잴 수 없다. Layout 의 flex 아이템 자리를 그대로
- * 이어받아 여백에는 영향을 주지 않는다.
- */
-export const TourTarget = styled.div`
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-`
+import { pageEnter } from '@/styles/animations'
 
 export const Layout = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[5]};
+  /* 카드끼리는 떨어져 서야 각자의 테두리가 경계로 읽힌다 */
+  gap: ${({ theme }) => theme.spacing[3]};
+
+  ${pageEnter}
 `
 
 /** 배송일 셀 — 날짜와 남은 일수를 두 줄로 쌓는다 */

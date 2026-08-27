@@ -1,9 +1,13 @@
 import styled from 'styled-components'
+import { pageEnter } from '@/styles/animations'
 
 export const Layout = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[5]};
+  /* 카드끼리는 떨어져 서야 각자의 테두리가 경계로 읽힌다 */
+  gap: ${({ theme }) => theme.spacing[3]};
+
+  ${pageEnter}
 `
 
 /** 값 아래에 한 줄을 더 쌓는 셀 — 문서번호 밑의 구분·공급처, 상태 밑의 다음 행동 */
@@ -59,6 +63,13 @@ export const ResultCount = styled.span`
 `
 
 /** 부족분 발주는 주문 상세에 있다 — 여기서 그 길을 알려준다 */
+/** 입고로 늘어난 수량 — 이 화면에서 담당자가 확인하러 오는 숫자다 */
+export const Increase = styled.span`
+  font-variant-numeric: tabular-nums;
+  font-weight: ${({ theme }) => theme.font.weight.semibold};
+  color: ${({ theme }) => theme.colors.successText};
+`
+
 export const OrderLink = styled.span`
   font-size: ${({ theme }) => theme.font.size.sm};
 

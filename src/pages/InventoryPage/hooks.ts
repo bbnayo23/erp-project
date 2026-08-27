@@ -6,11 +6,15 @@ import {
   LEVEL_FILTER_OPTIONS,
   matchesFilter,
   rowToneOf,
+  toItemDemandRows,
+  toItemDocumentRows,
+  toMovementRows,
   toSerialRows,
   toStockRows,
   toSummaryItems,
   warehouseFilterOptions,
 } from '@/features/inventory/utils'
+import { usePreparationPlan } from '@/store/hooks'
 import type { InventoryPageState } from './types'
 
 const EMPTY_FILTER: InventoryFilter = {
@@ -30,11 +34,17 @@ const EMPTY_FILTER: InventoryFilter = {
  * 것뿐이다. 가용재고 계산은 도메인이 끝냈다 (가이드 §30).
  */
 export function useInventoryPage(): InventoryPageState {
+  // 계획은 스토어 훅이 만든다. 여기서 컨텍스트를 다시 조립하면 계획을 만드는 법이
+  // 두 곳으로 갈라져, 판정에 필요한 컬렉션이 늘 때 한쪽만 고치는 일이 생긴다.
+  const plan = usePreparationPlan()
+
   const items = useErpStore((state) => state.items)
   const warehouses = useErpStore((state) => state.warehouses)
   const inventories = useErpStore((state) => state.inventories)
   const serials = useErpStore((state) => state.serials)
   const incomingDocuments = useErpStore((state) => state.incomingDocuments)
+  const suppliers = useErpStore((state) => state.suppliers)
+  const stockMovements = useErpStore((state) => state.stockMovements)
   const baseAt = useErpStore((state) => state.baseAt)
 
   const [filter, setFilterState] = useState<InventoryFilter>(EMPTY_FILTER)
@@ -63,12 +73,32 @@ export function useInventoryPage(): InventoryPageState {
 
   const warehouseOptions = useMemo(() => warehouseFilterOptions(warehouses), [warehouses])
 
+  const movements = useMemo(
+    () => toMovementRows(stockMovements, { items, warehouses }),
+    [stockMovements, items, warehouses],
+  )
+
   const drawer = useMemo(() => {
     if (!openedKey) return null
     const row = allRows.find((candidate) => candidate.key === openedKey)
     if (!row) return null
-    return { row, serials: toSerialRows(serials, row.itemCode, row.warehouseCode) }
-  }, [openedKey, allRows, serials])
+
+    // 대기 주문은 계획이 이미 답을 갖고 있다. 이 화면에서 다시 세면 배정 순서가 어긋난다.
+    return {
+      row,
+      serials: toSerialRows(serials, row.itemCode, row.warehouseCode),
+      demands: toItemDemandRows(plan, row.itemCode, row.warehouseCode),
+      documents: toItemDocumentRows(
+        { incomingDocuments, suppliers, baseAt },
+        row.itemCode,
+        row.warehouseCode,
+      ),
+      movements: movements.filter(
+        (movement) =>
+          movement.itemCode === row.itemCode && movement.warehouseCode === row.warehouseCode,
+      ),
+    }
+  }, [openedKey, allRows, plan, serials, incomingDocuments, suppliers, movements, baseAt])
 
   const setFilter = useCallback((patch: Partial<InventoryFilter>) => {
     setFilterState((previous) => ({ ...previous, ...patch }))
@@ -91,8 +121,11 @@ export function useInventoryPage(): InventoryPageState {
     rowTone: rowToneOf,
 
     drawer,
-    openSerials: (row) => setOpenedKey(row.serialManaged ? row.key : null),
-    closeSerials: () => setOpenedKey(null),
+    // 시리얼 품목이 아니어도 연다 — 대기 주문과 입고예정은 모든 품목에 있다
+    openDetail: (row) => setOpenedKey(row.key),
+    closeDetail: () => setOpenedKey(null),
+
+    movements,
 
     baseAt,
   }
