@@ -41,6 +41,72 @@ export interface PreparationRow {
  * 필요 · 가용재고 · 입고예정 · 부족 네 숫자를 나란히 둔다. 부족이 왜 그 값인지
  * 담당자가 직접 검산할 수 있어야 한다 — 부족 = 필요 - 가용재고 - 입고예정.
  */
+/**
+ * 한 주문이 출고까지 가는 길의 한 칸.
+ *
+ * 준비상태(READY · WAITING · SHORTAGE)는 '지금 어디가 막혔는가' 를 말하지만 '그래서
+ * 다음에 무엇을 누르는가' 는 말하지 않는다. 담당자가 상세를 열고 가장 먼저 찾는 것이
+ * 그 하나라, 네 칸을 순서대로 세워 지금 위치를 표시한다.
+ */
+export type OrderStepKey = 'ISSUE' | 'RECEIVE' | 'RESERVE' | 'SHIP'
+
+export type OrderStepState =
+  /** 끝났다 */
+  | 'DONE'
+  /** 지금 할 일 */
+  | 'CURRENT'
+  /** 앞 칸이 끝나야 열린다 */
+  | 'TODO'
+  /** 이 주문에는 필요 없다 — 재고로 채워지는 주문의 발주·입고 */
+  | 'SKIPPED'
+  /** 데이터를 확인해야 해서 길 자체가 막혔다 */
+  | 'BLOCKED'
+
+export interface OrderStep {
+  key: OrderStepKey
+  label: string
+  state: OrderStepState
+  /** CURRENT 일 때 담당자가 할 일 한 줄 */
+  hint?: string
+}
+
+/**
+ * 저장하지 않은 값을 두고 나가려 할 때 묻는 내용.
+ *
+ * 문구를 화면 컴포넌트에 두지 않는 이유는 준비상태 문구와 같다 — 무엇을 잃는지 말하는
+ * 문장이 마크업 사이에 흩어지면 두 경로(뒤로 가기 · 취소)가 다른 말을 하게 된다.
+ */
+export type UnsavedAlertKind = 'LEAVE' | 'DISCARD'
+
+export interface UnsavedAlert {
+  kind: UnsavedAlertKind
+  title: string
+  description: string
+  confirmLabel: string
+  cancelLabel: string
+}
+
+/**
+ * 06_주문에 적힌 그대로의 한 줄.
+ *
+ * 준비 품목 표는 세트를 풀고 서비스를 걷어낸 뒤의 모습이라, 담당자가 주문서와 대조할
+ * 수 없다. 취소된 품목과 설치 서비스가 표에서 사라진 것인지 처음부터 없었던 것인지도
+ * 구분되지 않는다. 그래서 원본을 그대로 한 표 더 둔다.
+ */
+export interface OrderedItemRow {
+  sequence: number
+  itemCode: string
+  itemName: string
+  itemType: string
+  quantity: number
+  /** 06_주문 품목상태 — 정상 · 취소 */
+  status: string
+  /** 이 줄이 준비 수요로 어떻게 옮겨졌는가 */
+  note: string
+  /** 준비 수요에서 빠진 줄 — 취소 · 서비스 */
+  excluded: boolean
+}
+
 export interface PreparationItemRow {
   itemCode: string
   itemName: string
@@ -101,6 +167,13 @@ export interface PreparationFilter {
   status: PreparationStatusFilter
   /** 창고코드. 'ALL' 이면 전체 */
   warehouseCode: string
+  /**
+   * 배송예정일 (ISO). 'ALL' 이면 전체.
+   *
+   * 담당자는 '오늘 나갈 것' 을 먼저 본다. 목록이 배송일 순이라 스크롤로도 찾을 수 있지만,
+   * 하루치만 남기고 세는 일은 눈으로 하면 틀린다.
+   */
+  deliveryDate: string
   /** 주문번호 부분 일치 */
   keyword: string
   /**

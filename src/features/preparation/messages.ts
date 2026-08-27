@@ -45,11 +45,56 @@ export const ISSUE_REJECTION: Record<IssueRejectionCode, string> = {
   INACTIVE_WAREHOUSE: '사용 중지 창고',
 }
 
-export const ACTION_SUCCESS = {
-  RESERVE: '예약했습니다. 개체까지 배정되어 출고할 수 있습니다.',
-  RELEASE: '예약을 해제했습니다. 재고가 다른 주문에 돌아갑니다.',
-  SHIP: '출고했습니다. 현재고와 예약수량이 함께 줄었습니다.',
-  ISSUE: '발주를 생성했습니다. 문서를 만든 것만으로 현재고는 늘지 않습니다.',
-  RECEIVE: '입고했습니다. 현재고가 늘어 대기 중인 주문이 다시 판정됩니다.',
-  INSPECT: '검사를 통과시켰습니다. 이제 입고할 수 있습니다.',
-} as const
+/**
+ * 성공 안내는 두 층으로 나눈다.
+ *
+ * 제목은 '저장되었습니다 · 완료되었습니다' 로 끝난다 — 담당자가 토스트에서 확인해야
+ * 하는 것은 처리가 됐다는 사실 하나이고, 그건 0.5초 안에 읽혀야 한다.
+ * 설명은 그 처리가 재고의 어느 칸을 움직였는지 말한다. 두 문장을 한 줄로 붙이면
+ * 사실이 설명에 묻힌다.
+ */
+export interface ActionSuccessMessage {
+  title: string
+  description: string
+}
+
+export const ACTION_SUCCESS: Record<
+  'RESERVE' | 'RELEASE' | 'SHIP' | 'ISSUE' | 'RECEIVE' | 'INSPECT',
+  ActionSuccessMessage
+> = {
+  RESERVE: {
+    title: '예약이 완료되었습니다',
+    description: '개체까지 배정되어 출고할 수 있습니다.',
+  },
+  RELEASE: {
+    title: '예약 해제가 완료되었습니다',
+    description: '재고가 다른 주문에 돌아갑니다.',
+  },
+  SHIP: {
+    title: '출고가 완료되었습니다',
+    description: '현재고와 예약수량이 함께 줄었습니다.',
+  },
+  ISSUE: {
+    title: '발주가 저장되었습니다',
+    description: '문서를 만든 것만으로 현재고는 늘지 않습니다. 입고해야 늘어납니다.',
+  },
+  RECEIVE: {
+    title: '입고가 완료되었습니다',
+    description: '현재고가 늘어 대기 중인 주문이 다시 판정됩니다.',
+  },
+  INSPECT: {
+    title: '검사 결과가 저장되었습니다',
+    description: '이제 입고할 수 있습니다.',
+  },
+}
+
+/** 실패 토스트의 제목. 무엇이 막혔는지는 설명(ACTION_FAILURE)이 말한다. */
+export const ACTION_FAILURE_TITLE = '처리하지 못했습니다'
+
+/**
+ * 반복 요청의 제목.
+ *
+ * 실패로 띄우지 않는다. 요청한 상태가 이미 이루어져 있다는 뜻이라, 빨갛게 띄우면
+ * 담당자가 무언가 잘못한 줄 알고 되돌리려 한다.
+ */
+export const ACTION_DUPLICATE_TITLE = '이미 처리된 요청입니다'
