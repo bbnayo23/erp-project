@@ -13,7 +13,6 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "verify:seed": "python tools/compare_seed.py \"src/data/재고흐름ERP_example-data_v2.xlsx\"",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

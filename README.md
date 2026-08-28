@@ -40,11 +40,7 @@ pnpm build
 06_주문만 변환을 거친다. 시트는 주문 하나를 품목별 여러 행으로 갖고 있어, `groupOrderRows`
 로 주문 단위로 한 번 접는다.
 
-시드가 엑셀과 같은지는 손으로 확인하지 않는다.
-
-```bash
-pnpm verify:seed   # 엑셀 원본 ↔ 시드를 셀 단위로 대조 (Python 3)
-```
+시드를 옮겨 적은 원본은 `src/data/재고흐름ERP_example-data_v2.xlsx` 로 함께 둔다.
 
 ### 처리 결과는 다시 실행해도 남는다
 
