@@ -4,12 +4,21 @@ import { calculateOrderDemand } from '@/domain/order/calculateDemand'
 import { db, inventory, lineOf, order } from '../fixtures'
 
 /**
- * Case 1. 세트상품 전개 (가이드 §5.2, §28)
+ * 재고 수요 계산 (가이드 §5.2, §28)
  *
- * 세트상품 자체는 재고·발주 대상이 아니다. 구성품으로 풀어야 실제 준비 수요가 나온다.
+ * 주문 상품 중 '실제 재고가 필요한 것' 만 남기는 단계다. 세트는 구성품으로 풀고,
+ * 서비스는 뺀다. 여기서 틀리면 이후 판정 · 부족수량 · 발주가 모두 함께 틀어진다.
  */
-describe('세트상품 전개', () => {
+describe('재고 수요 계산', () => {
   const stocked = [inventory('MAT-Q', 10), inventory('FRM-Q', 10), inventory('PIL-STD', 10)]
+
+  it('일반 상품은 주문 수량만큼 재고 수요에 포함된다', () => {
+    const target = order({ id: 'ORD-000', items: [{ itemCode: 'MAT-Q', quantity: 4 }] })
+    const preparation = evaluateOrder(db({ inventories: stocked }), target)
+
+    expect(preparation.items).toHaveLength(1)
+    expect(lineOf(preparation, 'MAT-Q').requiredQuantity).toBe(4)
+  })
 
   it('세트 1개는 구성품 수량으로 풀린다', () => {
     const target = order({ id: 'ORD-001', items: [{ itemCode: 'SET-001', quantity: 1 }] })
@@ -41,6 +50,24 @@ describe('세트상품 전개', () => {
 
     expect(preparation.items.map((item) => item.itemCode)).not.toContain('SVC-INSTALL')
     expect(preparation.excludedItemCodes).toContain('SVC-INSTALL')
+  })
+
+  /**
+   * 설치뿐 아니라 수거도 서비스다. 코드가 'SVC-INSTALL' 만 걸러내는 식으로 굳으면
+   * 수거가 붙은 주문에서 있지도 않은 재고를 찾게 된다. 품목유형으로 판단해야 한다.
+   */
+  it('수거 서비스는 재고 수요에서 제외된다', () => {
+    const target = order({
+      id: 'ORD-006',
+      items: [
+        { itemCode: 'MAT-Q', quantity: 1 },
+        { itemCode: 'SVC-DISPOSAL', quantity: 1 },
+      ],
+    })
+    const preparation = evaluateOrder(db({ inventories: stocked }), target)
+
+    expect(preparation.items.map((item) => item.itemCode)).toEqual(['MAT-Q'])
+    expect(preparation.excludedItemCodes).toContain('SVC-DISPOSAL')
   })
 
   it('주문행으로 직접 들어온 서비스도 제외된다', () => {

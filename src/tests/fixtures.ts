@@ -95,6 +95,13 @@ export const ITEMS: Item[] = [
     itemType: '서비스',
     serialManaged: false,
   },
+  {
+    itemCode: 'SVC-DISPOSAL',
+    itemName: '기존 매트리스 수거',
+    category: '서비스',
+    itemType: '서비스',
+    serialManaged: false,
+  },
 ]
 
 /** SET-001 = 매트리스 1 + 프레임 1 + 베개 2 + 설치 서비스(출고 대상 아님) */

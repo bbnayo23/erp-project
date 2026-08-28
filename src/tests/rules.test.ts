@@ -144,6 +144,30 @@ describe('핵심 업무 규칙', () => {
       expect(JSON.stringify(state().inventories)).toBe(before)
       expect(state().shipments).toEqual([])
     })
+
+    /**
+     * 판정에서 빼는 것과 이력을 지우는 것은 다르다.
+     *
+     * 이미 출고된 물건은 창고에 없다. 주문이 나중에 취소되었다고 재고를 되돌리면
+     * 장부에만 있고 실물은 없는 수량이 생긴다. 제외는 '앞으로 준비하지 않는다' 는
+     * 뜻이지 '없던 일로 한다' 는 뜻이 아니다.
+     */
+    it('이미 출고된 주문의 재고와 개체 이력은 되돌리지 않는다', () => {
+      const shipped = state().serials.filter((serial) => serial.status === '출고 완료')
+      expect(shipped.length).toBeGreaterThan(0)
+
+      const inventoriesBefore = JSON.stringify(state().inventories)
+
+      // 제외 주문 전체에 예약 · 출고를 다시 시도해도
+      for (const order of excluded()) {
+        state().reserve(order.orderId)
+        state().ship(order.orderId)
+      }
+
+      // 출고 완료 개체는 창고로 돌아오지 않고 현재고도 복구되지 않는다
+      expect(state().serials.filter((serial) => serial.status === '출고 완료')).toEqual(shipped)
+      expect(JSON.stringify(state().inventories)).toBe(inventoriesBefore)
+    })
   })
 
   describe('부분 예약을 하지 않는다', () => {
