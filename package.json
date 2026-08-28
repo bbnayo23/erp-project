@@ -13,6 +13,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:rules": "vitest run --exclude \"**/ui/**\"",
+    "test:ui": "vitest run src/tests/ui",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
