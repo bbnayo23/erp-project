@@ -18,9 +18,28 @@ export interface DataTableColumn<T> {
   numeric?: boolean
 }
 
+/**
+ * 행을 묶는 머리 줄.
+ *
+ * 표 밖에 그리지 않고 표의 행으로 둔다 — 밖에 두면 그룹마다 컬럼 정렬이 어긋난다.
+ */
+export interface DataTableGroup {
+  key: string
+  /** 머리 줄에 적을 것 */
+  span: ReactNode
+  /** 이 그룹에 속한 행 수. data 를 앞에서부터 이만큼씩 잘라 쓴다. */
+  size: number
+}
+
 export interface DataTableProps<T> {
   columns: DataTableColumn<T>[]
   data: T[]
+  /**
+   * 행을 묶어 머리 줄을 넣는다. 넘기지 않으면 평평한 표다.
+   *
+   * 그룹의 순서와 data 의 순서가 같아야 한다 — 표는 다시 정렬하지 않는다.
+   */
+  groups?: DataTableGroup[]
   rowKey: (row: T, index: number) => string
   emptyTitle?: string
   emptyDescription?: string

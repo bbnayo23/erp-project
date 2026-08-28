@@ -3,6 +3,7 @@ import type { RowTone } from '@/components/common/DataTable'
 import type { SelectOption } from '@/components/common/Select'
 import type { SummaryCardItem } from '@/components/common/SummaryCards'
 import type { PreparationFilter, PreparationRow } from '@/features/preparation/types'
+import type { DeliveryGroup } from '@/features/preparation/utils'
 
 /**
  * usePreparationPage 의 반환 형태.
@@ -13,6 +14,8 @@ import type { PreparationFilter, PreparationRow } from '@/features/preparation/t
 export interface PreparationPageState {
   /** 필터를 통과한 행 — 표에 그릴 것 */
   rows: PreparationRow[]
+  /** 같은 행을 배송일로 묶은 것 — 표는 이쪽을 그린다 */
+  groups: DeliveryGroup[]
   /** 필터 이전의 전체 건수 — '5건 / 전체 23건' 표시에 쓴다 */
   totalCount: number
 

@@ -72,3 +72,38 @@ export const ResultCount = styled.span`
   color: ${({ theme }) => theme.colors.textMuted};
   font-variant-numeric: tabular-nums;
 `
+
+/**
+ * 배송일 그룹 머리.
+ *
+ * 목록이 26줄이면 '오늘 나갈 것이 몇 건인가' 를 눈으로 세게 된다. 날짜가 바뀌는 자리에
+ * 줄을 긋고 건수를 적으면 세지 않아도 된다.
+ *
+ * 표 밖에 두지 않고 표의 행으로 둔다 — 밖에 두면 컬럼 정렬이 그룹마다 어긋난다.
+ */
+export const GroupRow = styled.tr`
+  background: ${({ theme }) => theme.colors.surfaceMuted};
+
+  th {
+    padding: ${({ theme }) => theme.spacing[2]} ${({ theme }) => theme.tableCell.paddingX};
+    text-align: left;
+    font-size: ${({ theme }) => theme.font.size.sm};
+    font-weight: ${({ theme }) => theme.font.weight.bold};
+    color: ${({ theme }) => theme.colors.textMuted};
+
+    box-shadow:
+      inset 0 1px 0 ${({ theme }) => theme.colors.border},
+      inset 0 -1px 0 ${({ theme }) => theme.colors.border};
+  }
+`
+
+export const GroupCount = styled.span`
+  font-weight: ${({ theme }) => theme.font.weight.regular};
+  color: ${({ theme }) => theme.colors.textSubtle};
+`
+
+/** 준비 대상이 아닌 주문 — 처리할 것이 없다는 사실이 행에서 읽혀야 한다 */
+export const ExcludedMark = styled.span`
+  font-size: ${({ theme }) => theme.font.size.sm};
+  color: ${({ theme }) => theme.colors.textSubtle};
+`

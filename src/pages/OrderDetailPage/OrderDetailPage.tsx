@@ -177,6 +177,17 @@ export function OrderDetailPage() {
         <StatusCell>
           <StatusBadge descriptor={row.statusDescriptor} size="sm" />
           {row.note && <Note>{row.note}</Note>}
+          {/*
+            부족한 품목마다 발주로 가는 길을 둔다.
+            머리말의 '부족분 발주' 는 전부를 한 번에 내고, 이 링크는 한 품목만 손본다.
+          */}
+          {row.shortageQuantity > 0 && (
+            <Link
+              to={`/inbound/new?itemCode=${row.itemCode}&warehouseCode=${summary.warehouseCode}&orderId=${summary.orderId}&quantity=${row.shortageQuantity}`}
+            >
+              이 품목만 발주
+            </Link>
+          )}
         </StatusCell>
       ),
     },

@@ -148,3 +148,23 @@ export const Tr = styled.tr<{ $clickable: boolean; $selected: boolean; $tone?: R
 export const StateCell = styled.td`
   padding: 0;
 `
+
+/**
+ * 그룹 머리 줄.
+ *
+ * 표의 행으로 그린다 — 표 밖에 두면 그룹마다 컬럼 정렬이 어긋난다.
+ * 선은 border 가 아니라 inset 그림자로 긋는다(머리 줄과 같은 이유: border-collapse).
+ */
+export const GroupHead = styled.th`
+  padding: ${({ theme }) => theme.spacing[2]} ${({ theme }) => theme.tableCell.paddingX};
+  text-align: left;
+
+  font-size: ${({ theme }) => theme.font.size.sm};
+  font-weight: ${({ theme }) => theme.font.weight.bold};
+  color: ${({ theme }) => theme.colors.textMuted};
+
+  background: ${({ theme }) => theme.colors.surfaceMuted};
+  box-shadow:
+    inset 0 1px 0 ${({ theme }) => theme.colors.border},
+    inset 0 -1px 0 ${({ theme }) => theme.colors.border};
+`

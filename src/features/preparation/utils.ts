@@ -194,13 +194,46 @@ export function toPreparationRow(
 
     itemCount: preparation.items.length,
     shortageQuantity: sumBy(preparation.items, (item) => item.shortageQuantity),
+    excluded: entry.excluded,
+    orderStatus: order.status,
   }
+}
+
+/**
+ * 배송일별로 묶는다.
+ *
+ * 목록 순서가 이미 배송일 순이라 앞에서부터 훑으며 날짜가 바뀌는 자리에 머리를 넣으면
+ * 된다. 다시 정렬하지 않는다 — 정렬을 한 번 더 하면 배정 순서와 목록 순서가 갈릴 수 있다.
+ *
+ * 담당자가 '오늘 몇 건' 을 눈으로 세지 않아도 되게 건수를 함께 적는다.
+ */
+export interface DeliveryGroup {
+  deliveryDate: string
+  label: string
+  rows: PreparationRow[]
+}
+
+export function groupByDeliveryDate(rows: readonly PreparationRow[]): DeliveryGroup[] {
+  const groups: DeliveryGroup[] = []
+
+  for (const row of rows) {
+    const last = groups.at(-1)
+    if (last && last.deliveryDate === row.deliveryDate) {
+      last.rows.push(row)
+      continue
+    }
+    groups.push({ deliveryDate: row.deliveryDate, label: row.deliveryLabel, rows: [row] })
+  }
+
+  return groups
 }
 
 export const matchesFilter = (row: PreparationRow, filter: PreparationFilter): boolean => {
   if (filter.status !== 'ALL' && row.status !== filter.status) return false
   if (filter.warehouseCode !== 'ALL' && row.warehouseCode !== filter.warehouseCode) return false
   if (filter.deliveryDate !== 'ALL' && row.deliveryDate !== filter.deliveryDate) return false
+  // 제외 주문은 기본으로 감춘다 — 새로 준비할 것이 없어 매일 보는 목록만 늘린다
+  if (row.excluded && !filter.includeExcluded) return false
   if (filter.reserved === 'RESERVED' && !row.reserved) return false
   if (filter.reserved === 'UNRESERVED' && row.reserved) return false
 

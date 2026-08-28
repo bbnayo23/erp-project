@@ -34,6 +34,9 @@ export const ACTION_FAILURE: Record<ActionFailureCode, string> = {
   ITEM_NOT_FOUND: '등록되지 않은 품목입니다.',
   NOTHING_TO_ISSUE: '발주할 부족분이 없습니다.',
   NOT_PENDING_INSPECTION: '검사 대기 상태가 아닙니다.',
+
+  ALREADY_CONFIRMED: '이미 확정된 문서입니다.',
+  QUANTITY_MISMATCH: '합격 + 불합격 수량이 남은 수량과 맞지 않습니다.',
 }
 
 /** 발주하지 못한 부족분의 사유 — issueIncomingDocuments 가 문구까지 만들어 주지만, 요약 문장에 쓴다 */
@@ -59,7 +62,7 @@ export interface ActionSuccessMessage {
 }
 
 export const ACTION_SUCCESS: Record<
-  'RESERVE' | 'RELEASE' | 'SHIP' | 'ISSUE' | 'RECEIVE' | 'INSPECT',
+  'RESERVE' | 'RELEASE' | 'SHIP' | 'ISSUE' | 'RECEIVE' | 'INSPECT' | 'CONFIRM',
   ActionSuccessMessage
 > = {
   RESERVE: {
@@ -81,6 +84,10 @@ export const ACTION_SUCCESS: Record<
   RECEIVE: {
     title: '입고가 완료되었습니다',
     description: '현재고가 늘어 대기 중인 주문이 다시 판정됩니다.',
+  },
+  CONFIRM: {
+    title: '발주가 확정되었습니다',
+    description: '이제 입고예정으로 세어 대기 중인 주문이 다시 판정됩니다.',
   },
   INSPECT: {
     title: '검사 결과가 저장되었습니다',

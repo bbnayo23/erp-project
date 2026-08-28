@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useErpStore } from '@/store/erpStore'
 import type { InventoryFilter } from '@/features/inventory/types'
 import type { StockLevelFilter } from '@/features/inventory/types'
@@ -48,8 +49,17 @@ export function useInventoryPage(): InventoryPageState {
   const baseAt = useErpStore((state) => state.baseAt)
 
   const [filter, setFilterState] = useState<InventoryFilter>(EMPTY_FILTER)
-  /** 서랍은 행 키만 들고 있는다 — 행 객체를 들면 입고 후에도 옛 숫자를 보여준다 */
-  const [openedKey, setOpenedKey] = useState<string | null>(null)
+
+  /**
+   * 열려 있는 품목은 URL 이 정한다.
+   *
+   * 행 키를 상태로 들고 있던 자리다 — 딥링크로 열 수 있어야 다른 화면에서 '이 품목
+   * 보기' 로 건너올 수 있고, 새로고침해도 보던 품목이 남는다.
+   * 키(`품목:창고`)의 콜론은 URL 에서 그대로 쓸 수 있다.
+   */
+  const navigate = useNavigate()
+  const { itemKey } = useParams()
+  const openedKey = itemKey ?? null
 
   const allRows = useMemo(
     () => toStockRows({ items, warehouses, inventories, serials, incomingDocuments }),
@@ -122,8 +132,8 @@ export function useInventoryPage(): InventoryPageState {
 
     drawer,
     // 시리얼 품목이 아니어도 연다 — 대기 주문과 입고예정은 모든 품목에 있다
-    openDetail: (row) => setOpenedKey(row.key),
-    closeDetail: () => setOpenedKey(null),
+    openDetail: (row) => navigate(`/items/${encodeURIComponent(row.key)}`),
+    closeDetail: () => navigate('/items'),
 
     movements,
 

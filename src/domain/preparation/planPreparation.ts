@@ -9,17 +9,47 @@ export type PlanPreparationContext = EvaluateOrderContext &
   Pick<ErpDatabase, 'orders' | 'reservations'>
 
 export interface PreparationPlanEntry {
-  /** 1부터. 이 순서로 재고를 나눠 가졌다. */
+  /** 1부터. 이 순서로 재고를 나눠 가졌다. 제외 주문은 0 이다. */
   priority: number
   order: Order
   preparation: OrderPreparation
   /** 예약을 마쳐 배정 경쟁에서 빠진 주문 — 다음 행동은 피킹·출고다 */
   reserved: boolean
+  /** 준비 대상이 아닌 주문 — 취소 · 출고 완료 · 배송 완료 */
+  excluded: boolean
 }
 
 export interface PreparationPlan {
   entries: PreparationPlanEntry[]
+  /**
+   * 준비 대상이 아닌 주문 — 취소 · 출고 완료 · 배송 완료.
+   *
+   * 배정에는 참여하지 않지만 목록에서 찾을 수 있어야 한다. 담당자가 찾는 주문이 화면에
+   * 아예 없으면 데이터가 잘못됐다고 의심하게 된다.
+   */
+  excluded: PreparationPlanEntry[]
 }
+
+/**
+ * 제외 주문을 판정 없이 행으로만 만든다.
+ *
+ * `evaluateOrder` 를 태우지 않는다 — 태우면 ORDER_NOT_CONFIRMED 로 EXCEPTION 이 되어
+ * 진짜 데이터 오류와 섞인다. 취소된 주문은 오류가 아니라 그냥 대상이 아니다.
+ */
+const excludedEntries = (ctx: PlanPreparationContext): PreparationPlanEntry[] =>
+  sortOrdersByPriority(ctx.orders.filter((order) => !isPreparationTarget(order))).map((order) => ({
+    priority: 0,
+    order,
+    preparation: {
+      orderId: order.orderId,
+      status: 'EXCEPTION' as const,
+      items: [],
+      excludedItemCodes: [],
+      blockingReasons: [],
+    },
+    reserved: false,
+    excluded: true,
+  }))
 
 /**
  * 준비 대상 주문 전체를 우선순위대로 판정한다. 목록 화면이 쓰는 함수다.
@@ -52,10 +82,11 @@ export function planPreparation(ctx: PlanPreparationContext): PreparationPlan {
         ? preparationFromReservation(reservation)
         : evaluateOrder(ctx, order, ledger),
       reserved: reservation !== undefined,
+      excluded: false,
     }
   })
 
-  return { entries }
+  return { entries, excluded: excludedEntries(ctx) }
 }
 
 export const findPlanEntry = (

@@ -13,9 +13,12 @@ import type { PreparationRow } from '@/features/preparation/types'
 import type { PreparationFilter, PreparationStatusFilter } from '@/features/preparation/types'
 import { useFreshness } from '@/store/hooks'
 import { usePreparationPage } from './hooks'
+import { Checkbox } from '@/components/common/Checkbox'
 import {
   DateCell,
   Detail,
+  ExcludedMark,
+  GroupCount,
   DueLabel,
   FilterRow,
   FilterSpacer,
@@ -39,6 +42,7 @@ export function PreparationPage() {
   const navigate = useNavigate()
   const {
     rows,
+    groups,
     totalCount,
     filter,
     setFilter,
@@ -97,12 +101,16 @@ export function PreparationPage() {
     {
       key: 'status',
       header: '준비상태',
-      render: (row) => (
-        <StatusCell>
-          <StatusBadge descriptor={row.statusDescriptor} />
-          <Detail>{row.detail}</Detail>
-        </StatusCell>
-      ),
+      render: (row) =>
+        row.excluded ? (
+          // 취소·완료 주문은 판정 자체가 없다. 배지를 달면 처리할 것이 있어 보인다.
+          <ExcludedMark>{row.orderStatus} · 준비 대상 아님</ExcludedMark>
+        ) : (
+          <StatusCell>
+            <StatusBadge descriptor={row.statusDescriptor} />
+            <Detail>{row.detail}</Detail>
+          </StatusCell>
+        ),
     },
   ]
 
@@ -158,6 +166,11 @@ export function PreparationPage() {
               value={filter.keyword}
               onChange={(event) => setFilter({ keyword: event.target.value })}
             />
+            <Checkbox
+              label="제외 주문 포함"
+              checked={filter.includeExcluded}
+              onChange={(event) => setFilter({ includeExcluded: event.target.checked })}
+            />
             {filtered && (
               <Button
                 variant="ghost"
@@ -178,6 +191,15 @@ export function PreparationPage() {
         <DataTable
           columns={columns}
           data={rows}
+          groups={groups.map((group) => ({
+            key: group.deliveryDate,
+            span: (
+              <>
+                {group.label} <GroupCount>· {group.rows.length}건</GroupCount>
+              </>
+            ),
+            size: group.rows.length,
+          }))}
           rowKey={(row) => row.orderId}
           // 배지를 읽지 않고도 어느 행이 손댈 행인지 색으로 먼저 걸러낼 수 있어야 한다
           rowTone={rowTone}

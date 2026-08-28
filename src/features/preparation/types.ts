@@ -3,6 +3,14 @@ import type { StatusDescriptor } from '@/components/common/StatusBadge'
 
 /** 배송 준비 현황 한 줄. 표에 그릴 값만 담는다 — 화면에서 계산하지 않기 위해서다. */
 export interface PreparationRow {
+  /**
+   * 준비 대상이 아닌 주문 — 취소 · 출고 완료 · 배송 완료.
+   *
+   * 목록에 섞여 있어도 처리 대상이 아님을 행 자체가 말해야 한다.
+   */
+  excluded: boolean
+  /** 06_주문 주문상태 — 제외 주문이 왜 대상이 아닌지 적는다 */
+  orderStatus: string
   orderId: OrderId
   /** 재고를 배정받은 순서 (1부터). 이 목록의 정렬 순서와 같다. */
   priority: number
@@ -181,4 +189,13 @@ export interface PreparationFilter {
    * 다음 행동이 예약이 아니라 출고다. 'ALL' 이면 구분하지 않는다.
    */
   reserved: 'ALL' | 'RESERVED' | 'UNRESERVED'
+
+  /**
+   * 준비 대상이 아닌 주문(취소 · 출고 완료 · 배송 완료)까지 보여줄지.
+   *
+   * 기본은 감춘다 — 새로 준비할 것이 없는 주문이라 매일 보는 목록을 늘리기만 한다.
+   * 그러나 '그 주문 어디 갔지' 를 확인할 길은 있어야 한다. 담당자가 찾는 주문이
+   * 화면에 아예 없으면 데이터가 잘못됐다고 의심하게 된다.
+   */
+  includeExcluded: boolean
 }

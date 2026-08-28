@@ -5,6 +5,7 @@ import type { PreparationFilter } from '@/features/preparation/types'
 import {
   STATUS_FILTER_OPTIONS,
   deliveryDateFilterOptions,
+  groupByDeliveryDate,
   matchesFilter,
   rowToneOf,
   toPreparationRow,
@@ -20,6 +21,7 @@ const EMPTY_FILTER: PreparationFilter = {
   deliveryDate: 'ALL',
   keyword: '',
   reserved: 'ALL',
+  includeExcluded: false,
 }
 
 /** 예약 여부 필터 — 준비상태와 다른 축이라 셀렉트를 따로 둔다 */
@@ -46,11 +48,17 @@ export function usePreparationPage(): PreparationPageState {
 
   // 계획은 이미 배송일 순서다. 여기서 다시 정렬하면 배정 순서와 목록 순서가 어긋난다.
   const allRows = useMemo(
-    () => plan.entries.map((entry) => toPreparationRow(entry, items, warehouses, baseAt)),
+    () =>
+      [...plan.entries, ...plan.excluded].map((entry) =>
+        toPreparationRow(entry, items, warehouses, baseAt),
+      ),
     [plan, items, warehouses, baseAt],
   )
 
   const rows = useMemo(() => allRows.filter((row) => matchesFilter(row, filter)), [allRows, filter])
+
+  /** 표는 배송일로 묶어 그린다 — 담당자가 '오늘 몇 건' 을 눈으로 세지 않아도 되게 */
+  const groups = useMemo(() => groupByDeliveryDate(rows), [rows])
 
   const setFilter = useCallback((patch: Partial<PreparationFilter>) => {
     setFilterState((previous) => ({ ...previous, ...patch }))
@@ -74,7 +82,11 @@ export function usePreparationPage(): PreparationPageState {
   )
 
   const summaryItems = useMemo(
-    () => toSummaryItems(allRows, { current: summarySelection, onSelect: selectSummary }),
+    () =>
+      toSummaryItems(
+        allRows.filter((row) => !row.excluded),
+        { current: summarySelection, onSelect: selectSummary },
+      ),
     [allRows, summarySelection, selectSummary],
   )
 
@@ -82,9 +94,13 @@ export function usePreparationPage(): PreparationPageState {
 
   const deliveryDateOptions = useMemo(() => deliveryDateFilterOptions(allRows), [allRows])
 
+  /** 제외 주문을 뺀 건수 — 요약과 결과 수는 준비 대상만 센다 */
+  const targetCount = useMemo(() => allRows.filter((row) => !row.excluded).length, [allRows])
+
   return {
     rows,
-    totalCount: allRows.length,
+    groups,
+    totalCount: targetCount,
 
     filter,
     setFilter,
@@ -94,6 +110,7 @@ export function usePreparationPage(): PreparationPageState {
       filter.warehouseCode !== 'ALL' ||
       filter.deliveryDate !== 'ALL' ||
       filter.reserved !== 'ALL' ||
+      filter.includeExcluded ||
       filter.keyword.trim() !== '',
 
     statusOptions: STATUS_FILTER_OPTIONS,
