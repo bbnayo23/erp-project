@@ -56,3 +56,14 @@ export function formatDueLabel(due: ISODateString, baseAt: ISODateString): strin
   if (days > 0) return `${days}일 남음`
   return `${Math.abs(days)}일 초과`
 }
+
+/**
+ * `<input type="date">` 가 읽는 형식 (YYYY-MM-DD).
+ *
+ * ISO 문자열 앞 10자를 그대로 쓴다. Date 로 파싱해 다시 만들면 시간대에 따라 하루가
+ * 밀린다 — 이 앱의 날짜는 전부 +09:00 이 붙은 로컬 날짜다.
+ */
+export const toDateInput = (iso: ISODateString): string => iso.slice(0, 10)
+
+/** 날짜 입력값(YYYY-MM-DD)을 이 앱의 ISO 형식으로 되돌린다 */
+export const fromDateInput = (value: string): ISODateString => `${value}T00:00:00+09:00`

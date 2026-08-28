@@ -22,12 +22,15 @@ import { recordMovements } from '@/domain/inventory/recordMovements'
 import { releaseOrder } from '@/domain/inventory/releaseOrder'
 import { reserveOrder, type ReserveFailure } from '@/domain/inventory/reserveOrder'
 import { shipOrder, type ShipFailure } from '@/domain/inventory/shipOrder'
+import { receiveIncoming, type ReceiveFailure } from '@/domain/purchase/receiveIncoming'
+import { confirmIncoming, type ConfirmFailure } from '@/domain/purchase/confirmIncoming'
 import {
-  completeInspection,
-  receiveIncoming,
-  type ReceiveFailure,
-} from '@/domain/purchase/receiveIncoming'
+  recordInspection,
+  type InspectionFailure,
+  type InspectionInput,
+} from '@/domain/purchase/recordInspection'
 import { issueIncomingDocuments } from '@/domain/purchase/issueIncomingDocuments'
+import { getRemainingQuantity } from '@/domain/purchase/getRemainingQuantity'
 import type { ShortageLine } from '@/domain/purchase/calculateShortage'
 
 /**
@@ -58,13 +61,13 @@ export type ActionFailureCode =
   | ReserveFailure
   | ShipFailure
   | ReceiveFailure
+  | ConfirmFailure
+  | InspectionFailure
   | 'ORDER_NOT_FOUND'
   | 'DOCUMENT_NOT_FOUND'
   | 'ITEM_NOT_FOUND'
   /** 발주할 수 있는 부족분이 하나도 없었다 — 사유는 rejections 에 있다 */
   | 'NOTHING_TO_ISSUE'
-  /** 검사 대기 상태가 아니어서 통과시킬 것이 없다 */
-  | 'NOT_PENDING_INSPECTION'
 
 /**
  * 액션 결과.
@@ -95,8 +98,27 @@ export interface ErpActions {
    */
   issueIncoming: (lines: readonly ShortageLine[], requestId: string) => ActionOutcome
 
-  receive: (documentId: DocumentId, quantity: Quantity, requestId: string) => ActionOutcome
-  inspect: (documentId: DocumentId) => ActionOutcome
+  /**
+   * 입고 처리.
+   *
+   * `serialNumbers` 를 넘기면 그 번호로 개체를 만든다. 넘기지 않으면 스토어가 채번한다 —
+   * 화면이 번호를 손봤을 때만 넘기면 되고, 그 외에는 기본 규칙을 쓴다.
+   */
+  receive: (
+    documentId: DocumentId,
+    quantity: Quantity,
+    requestId: string,
+    serialNumbers?: string[],
+  ) => ActionOutcome
+
+  /** 품질검사 결과 기록. 불합격 수량만큼 계획수량이 줄어든다. */
+  inspect: (
+    documentId: DocumentId,
+    result?: Pick<InspectionInput, 'passedQuantity' | 'failedQuantity' | 'note'>,
+  ) => ActionOutcome
+
+  /** 미확정 문서를 확정한다. 재고는 움직이지 않고 판정 대상에만 들어온다. */
+  confirm: (documentId: DocumentId) => ActionOutcome
 }
 
 export type ErpStore = ErpDatabase & ErpActions
@@ -295,7 +317,7 @@ export const useErpStore = create<ErpStore>()(
         return succeeded
       },
 
-      receive: (documentId, quantity, requestId) => {
+      receive: (documentId, quantity, requestId, serialNumbers) => {
         const state = get()
 
         const document = incomingRepository.find(state.incomingDocuments, documentId)
@@ -304,9 +326,13 @@ export const useErpStore = create<ErpStore>()(
         const item = findItem(state.items, document.itemCode)
         if (!item) return failed('ITEM_NOT_FOUND')
 
-        // 개체번호는 스토어가 만든다. 도메인 함수는 순수해야 하므로 번호를 지어내지 않는다.
-        const serialNumbers = isSerialManaged(item)
-          ? serialRepository.nextSerialNumbers(state.serials, item.itemCode, quantity)
+        /*
+         * 개체번호는 화면이 넘긴 것을 먼저 쓰고, 없으면 스토어가 채번한다.
+         * 도메인 함수는 순수해야 하므로 번호를 지어내지 않는다.
+         */
+        const units = isSerialManaged(item)
+          ? (serialNumbers ??
+            serialRepository.nextSerialNumbers(state.serials, item.itemCode, quantity))
           : undefined
 
         const result = receiveIncoming(state, {
@@ -315,7 +341,7 @@ export const useErpStore = create<ErpStore>()(
           quantity,
           requestId,
           receivedAt: state.baseAt,
-          ...(serialNumbers ? { serialNumbers } : {}),
+          ...(units ? { serialNumbers: units } : {}),
         })
         if (!result.ok) return failed(result.failure as ActionFailureCode)
 
@@ -339,17 +365,47 @@ export const useErpStore = create<ErpStore>()(
         return succeeded
       },
 
-      inspect: (documentId) => {
+      inspect: (documentId, result) => {
         const state = get()
 
         const document = incomingRepository.find(state.incomingDocuments, documentId)
         if (!document) return failed('DOCUMENT_NOT_FOUND')
 
-        const inspected = completeInspection(document)
-        // completeInspection 은 대기 상태가 아니면 같은 객체를 돌려준다
-        if (inspected === document) return failed('NOT_PENDING_INSPECTION')
+        /*
+         * 결과를 넘기지 않으면 남은 수량 전량 합격으로 본다.
+         *
+         * 담당자가 매번 수량을 적게 하면, 대부분인 '전량 합격' 이 가장 손이 많이 가는
+         * 경우가 된다. 불합격이 있을 때만 수량을 적는다.
+         */
+        const remaining = getRemainingQuantity(document)
+        const outcome = recordInspection({
+          document,
+          passedQuantity: result?.passedQuantity ?? remaining,
+          failedQuantity: result?.failedQuantity ?? 0,
+          ...(result?.note ? { note: result.note } : {}),
+        })
 
-        set({ incomingDocuments: incomingRepository.replace(state.incomingDocuments, inspected) })
+        if (!outcome.ok) return failed(outcome.failure as ActionFailureCode)
+
+        set({
+          incomingDocuments: incomingRepository.replace(state.incomingDocuments, outcome.document),
+        })
+        return succeeded
+      },
+
+      confirm: (documentId) => {
+        const state = get()
+
+        const document = incomingRepository.find(state.incomingDocuments, documentId)
+        if (!document) return failed('DOCUMENT_NOT_FOUND')
+
+        const outcome = confirmIncoming(document)
+        if (!outcome.ok) return failed(outcome.failure as ActionFailureCode)
+
+        // 재고는 그대로다. 확정은 '이 물량을 판정에 세어도 된다' 는 선언일 뿐이다.
+        set({
+          incomingDocuments: incomingRepository.replace(state.incomingDocuments, outcome.document),
+        })
         return succeeded
       },
     }),

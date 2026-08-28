@@ -51,4 +51,7 @@ export interface IncomingDocument {
    * 어떤 주문의 부족분 때문에 만든 문서인지 되짚을 수 있어야 한다.
    */
   relatedOrderId?: OrderId
+
+  /** 품질검사 비고 — 불합격 사유를 담당자가 남긴다 */
+  inspectionNote?: string
 }
