@@ -4,6 +4,7 @@ import { findInventory } from '@/domain/inventory/getAvailableQuantity'
 import { planPreparation } from '@/domain/preparation/planPreparation'
 import { getRemainingQuantity } from '@/domain/purchase/getRemainingQuantity'
 import { calculateShortage } from '@/domain/purchase/calculateShortage'
+import { isPreparationTarget } from '@/domain/preparation/preparationRules'
 
 /**
  * 핵심 업무 규칙 — 실제 시드로 한 번에 검증한다.
@@ -103,6 +104,45 @@ describe('핵심 업무 규칙', () => {
         (serial) => serial.reservedOrderId === entry.order.orderId,
       )
       expect(units.every((serial) => serial.status === '출고 완료')).toBe(true)
+    })
+  })
+
+  /**
+   * 취소 · 출고 완료 · 배송 완료 주문은 새 예약과 재고 변경을 만들지 않는다.
+   *
+   * 판정에서 빠지는 것만으로는 부족하다. 담당자가 옛 링크로 그 주문을 열거나, 다른
+   * 세션에서 이미 출고된 주문에 예약을 걸 수 있다 — 스토어가 막아야 한다.
+   */
+  describe('제외 주문은 재고를 바꾸지 않는다', () => {
+    const excluded = () => {
+      const orders = state().orders.filter((order) => !isPreparationTarget(order))
+      if (orders.length === 0) throw new Error('시드에 제외 주문이 없다')
+      return orders
+    }
+
+    it.each(['취소', '출고 완료', '배송 완료'])('%s 주문은 예약할 수 없다', (status) => {
+      const order = excluded().find((candidate) => candidate.status === status)
+      if (!order) throw new Error(`시드에 '${status}' 주문이 없다`)
+
+      const before = JSON.stringify(state().inventories)
+      const serialsBefore = JSON.stringify(state().serials)
+
+      const outcome = state().reserve(order.orderId)
+
+      expect(outcome.ok).toBe(false)
+      expect(JSON.stringify(state().inventories)).toBe(before)
+      expect(JSON.stringify(state().serials)).toBe(serialsBefore)
+      expect(state().reservations).toEqual([])
+      expect(state().stockMovements).toEqual([])
+    })
+
+    it('제외 주문은 출고도 할 수 없다', () => {
+      const order = excluded()[0]!
+      const before = JSON.stringify(state().inventories)
+
+      expect(state().ship(order.orderId).ok).toBe(false)
+      expect(JSON.stringify(state().inventories)).toBe(before)
+      expect(state().shipments).toEqual([])
     })
   })
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AppProviders } from '@/app/providers'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { useErpStore } from '@/store/erpStore'
@@ -26,7 +26,12 @@ describe('InventoryPage', () => {
   const renderPage = () =>
     render(
       <MemoryRouter initialEntries={['/items']}>
-        <InventoryPage />
+        <Routes>
+          <Route path="/items" element={<InventoryPage />} />
+          {/* 품목 서랍도 URL 이 정한다 — 딥링크로 열린다 */}
+          <Route path="/items/:itemKey" element={<InventoryPage />} />
+          <Route path="/orders/:orderId" element={<div>주문 상세</div>} />
+        </Routes>
       </MemoryRouter>,
       { wrapper: AppProviders },
     )

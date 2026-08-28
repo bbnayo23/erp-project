@@ -33,10 +33,25 @@ describe('PreparationPage', () => {
       { wrapper: AppProviders },
     )
 
+  /**
+   * 데이터 행만 센다.
+   *
+   * 표에는 배송일 그룹 머리 줄이 섞여 있다. 그 줄은 th 만 갖고 td 가 없어, td 유무로
+   * 가른다 — 인덱스로 자르면 그룹 수가 바뀔 때마다 테스트를 고쳐야 한다.
+   */
   const bodyRows = () => {
     const table = screen.getByRole('table')
-    // thead 한 줄을 뺀다
-    return within(table).getAllByRole('row').slice(1)
+    return within(table)
+      .getAllByRole('row')
+      .filter((row) => row.querySelector('td') !== null)
+  }
+
+  /** 배송일 그룹 머리 줄 */
+  const groupRows = () => {
+    const table = screen.getByRole('table')
+    return within(table)
+      .getAllByRole('row')
+      .filter((row) => row.querySelector('th[scope="colgroup"]') !== null)
   }
 
   beforeEach(() => {
@@ -134,6 +149,101 @@ describe('PreparationPage', () => {
 
     expect(cells[0]).toHaveTextContent('1')
     expect(cells[2]).toHaveTextContent(first.order.orderId)
+  })
+
+  /**
+   * 목록이 26줄이면 '오늘 나갈 것이 몇 건인가' 를 눈으로 세게 된다.
+   * 날짜가 바뀌는 자리에 줄을 긋고 건수를 적으면 세지 않아도 된다.
+   */
+  describe('배송일 그룹', () => {
+    it('배송일이 바뀌는 자리마다 머리 줄이 선다', () => {
+      renderPage()
+
+      const dates = new Set(
+        planPreparation(state()).entries.map((entry) => entry.order.deliveryDate),
+      )
+
+      expect(groupRows()).toHaveLength(dates.size)
+    })
+
+    it('머리 줄에 그 날짜의 건수를 적는다', () => {
+      renderPage()
+
+      const first = groupRows()[0]
+      if (!first) throw new Error('그룹 머리 줄이 없다')
+
+      const entries = planPreparation(state()).entries
+      const firstDate = entries[0]?.order.deliveryDate
+      const count = entries.filter((entry) => entry.order.deliveryDate === firstDate).length
+
+      expect(first).toHaveTextContent(new RegExp(`· ${count}건`))
+    })
+
+    /** 목록 순서는 재고를 배정받은 순서다. 그룹으로 묶어도 그 순서가 흐트러지면 안 된다. */
+    it('묶어도 배정 순서는 그대로다', () => {
+      renderPage()
+
+      const shown = bodyRows().map((row) => row.textContent ?? '')
+      const expected = planPreparation(state()).entries.map((entry) => entry.order.orderId)
+
+      for (const [index, orderId] of expected.entries()) {
+        expect(shown[index]).toContain(orderId)
+      }
+    })
+  })
+
+  /**
+   * 취소·출고완료·배송완료 주문은 새로 준비할 것이 없어 매일 보는 목록만 늘린다.
+   * 그러나 '그 주문 어디 갔지' 를 확인할 길은 있어야 한다 — 화면에 아예 없으면
+   * 담당자가 데이터를 의심한다.
+   */
+  describe('제외 주문', () => {
+    const excludedIds = () => planPreparation(state()).excluded.map((entry) => entry.order.orderId)
+
+    it('기본으로는 감춘다', () => {
+      renderPage()
+
+      const shown = bodyRows()
+        .map((row) => row.textContent ?? '')
+        .join(' ')
+
+      expect(excludedIds().length).toBeGreaterThan(0)
+      for (const orderId of excludedIds()) {
+        expect(shown).not.toContain(orderId)
+      }
+    })
+
+    it('토글을 켜면 목록에 나온다', () => {
+      renderPage()
+
+      const before = bodyRows().length
+      fireEvent.click(screen.getByLabelText('제외 주문 포함'))
+
+      expect(bodyRows()).toHaveLength(before + excludedIds().length)
+    })
+
+    /** 판정 자체가 없는 주문이다. 배지를 달면 처리할 것이 있어 보인다. */
+    it('제외 주문에는 준비상태 배지 대신 사유가 적힌다', () => {
+      renderPage()
+      fireEvent.click(screen.getByLabelText('제외 주문 포함'))
+
+      const orderId = excludedIds()[0]
+      const row = bodyRows().find((candidate) => candidate.textContent?.includes(orderId ?? ''))
+      if (!row) throw new Error('제외 주문 행을 찾을 수 없다')
+
+      expect(row).toHaveTextContent(/준비 대상 아님/)
+    })
+
+    /** 요약과 결과 수는 준비 대상만 센다 — 제외 주문이 섞이면 '오늘 할 일' 이 부풀려진다 */
+    it('요약 건수는 제외 주문을 세지 않는다', () => {
+      renderPage()
+      fireEvent.click(screen.getByLabelText('제외 주문 포함'))
+
+      const targets = planPreparation(state()).entries.length
+      const summary = screen.getByRole('list', { name: '준비 상태 요약' })
+
+      expect(within(summary).getByText(`${targets}건`)).toBeInTheDocument()
+    })
   })
 
   describe('필터', () => {
