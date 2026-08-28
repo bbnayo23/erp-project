@@ -9,6 +9,7 @@ import { SummaryCards } from '@/components/common/SummaryCards'
 import { TextInput } from '@/components/common/TextInput'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FreshnessBar } from '@/features/audit'
+import { ReceiveModal } from '@/features/purchase/ReceiveModal'
 import type {
   DocumentTypeFilter,
   IncomingRow,
@@ -58,10 +59,13 @@ export function PurchasePage() {
     documentTypeOptions,
     warehouseOptions,
     summaryItems,
-    receiptQuantity,
-    setReceiptQuantity,
-    receive,
-    inspect,
+    openDocument,
+    suggestedSerials,
+    serialManaged,
+    openReceipt,
+    closeReceipt,
+    submitReceipt,
+    confirm,
     rowTone,
     history,
   } = usePurchasePage()
@@ -149,36 +153,44 @@ export function PurchasePage() {
       width: COLUMN_WIDTH.action,
       align: 'right',
       render: (row) => {
-        if (row.canInspect) {
+        /*
+         * 한 행에 버튼은 하나다.
+         *
+         * 미확정 문서는 확정이 먼저고, 확정된 생산의뢰는 검사가 먼저다. 넷을 늘어놓으면
+         * 담당자가 순서를 스스로 판단해야 하는데, 그 순서는 이미 규칙으로 정해져 있다.
+         */
+        if (row.canConfirm) {
           return (
             <ReceiveControl>
-              <Button variant="secondary" size="sm" onClick={() => inspect(row.documentId)}>
-                검사 통과
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<Icon name="check" size={13} />}
+                onClick={() => confirm(row.documentId)}
+              >
+                발주 확정
               </Button>
             </ReceiveControl>
           )
         }
-        // 누를 수 없는 버튼을 회색으로 남기지 않는다. 왜 안 되는지는 단계 칸에 있다.
-        if (!row.canReceive) return <Muted>-</Muted>
 
-        return (
-          <ReceiveControl>
-            <TextInput
-              numeric
-              aria-label={`${row.documentId} 입고 수량`}
-              value={receiptQuantity(row.documentId)}
-              onChange={(event) => setReceiptQuantity(row.documentId, event.target.value)}
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Icon name="inbound" size={13} />}
-              onClick={() => receive(row.documentId)}
-            >
-              입고
-            </Button>
-          </ReceiveControl>
-        )
+        if (row.canInspect || row.canReceive) {
+          return (
+            <ReceiveControl>
+              <Button
+                variant={row.canInspect ? 'secondary' : 'primary'}
+                size="sm"
+                leftIcon={<Icon name={row.canInspect ? 'check' : 'inbound'} size={13} />}
+                onClick={() => openReceipt(row.documentId)}
+              >
+                {row.canInspect ? '검사 · 입고' : '입고'}
+              </Button>
+            </ReceiveControl>
+          )
+        }
+
+        // 누를 수 없는 버튼을 회색으로 남기지 않는다. 왜 안 되는지는 단계 칸에 있다.
+        return <Muted>-</Muted>
       },
     },
   ]
@@ -344,6 +356,15 @@ export function PurchasePage() {
           emptyDescription="입고를 처리하면 현재고가 얼마나 늘었고 어느 주문이 풀렸는지 여기에 쌓입니다."
         />
       </Panel>
+
+      <ReceiveModal
+        key={openDocument?.documentId}
+        row={openDocument}
+        suggestedSerials={suggestedSerials}
+        serialManaged={serialManaged}
+        onClose={closeReceipt}
+        onSubmit={submitReceipt}
+      />
     </Layout>
   )
 }

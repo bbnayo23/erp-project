@@ -103,6 +103,8 @@ export interface IncomingRow {
 
   /** 검사 대기 상태라 통과시킬 수 있다 */
   canInspect: boolean
+  /** 미확정 문서 — 확정해야 판정에 쓰이고 입고할 수 있다 */
+  canConfirm: boolean
   /** 확정 · 검사 완료 · 잔여 있음 */
   canReceive: boolean
 

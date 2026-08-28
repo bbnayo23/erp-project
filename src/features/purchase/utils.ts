@@ -136,6 +136,7 @@ export function toIncomingRow(
 
     // 미확정 문서에는 버튼을 내지 않는다. 스토어의 inspect 는 확정 여부를 보지 않지만,
     // 확정 전에 검사부터 통과시키면 '미확정인데 검사 완료' 라는 설명할 수 없는 문서가 남는다.
+    canConfirm: !document.confirmed,
     canInspect: document.confirmed && isInspectionPending(document),
     canReceive: document.confirmed && !isInspectionPending(document) && remainingQuantity > 0,
 

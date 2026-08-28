@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useErpStore } from '@/store/erpStore'
 import { ACTION_SUCCESS } from '@/features/preparation/messages'
 import { useActionReport } from '@/features/preparation/useActionReport'
@@ -17,6 +18,8 @@ import {
 import { toMovementRows } from '@/features/inventory/utils'
 import { PREPARATION_STATUS, RESERVED_STATUS } from '@/features/preparation/utils'
 import { usePreparationPlan } from '@/store/hooks'
+import { serialRepository } from '@/data/repositories/serialRepository'
+import { isSerialManaged, findItem } from '@/domain/master/itemRules'
 import type { PurchasePageState } from './types'
 
 const EMPTY_FILTER: PurchaseFilter = {
@@ -48,13 +51,19 @@ export function usePurchasePage(): PurchasePageState {
   const stockMovements = useErpStore((state) => state.stockMovements)
   const baseAt = useErpStore((state) => state.baseAt)
 
+  const serials = useErpStore((state) => state.serials)
+
   const receiveIncoming = useErpStore((state) => state.receive)
   const inspectDocument = useErpStore((state) => state.inspect)
+  const confirmDocument = useErpStore((state) => state.confirm)
 
   const report = useActionReport()
 
+  const navigate = useNavigate()
+  /** 열려 있는 문서는 URL 이 정한다 — 딥링크로 바로 열 수 있어야 한다 */
+  const { documentId: openId } = useParams()
+
   const [filter, setFilterState] = useState<PurchaseFilter>(EMPTY_FILTER)
-  const [receipts, setReceipts] = useState<Record<string, string>>({})
 
   /**
    * 요청 토큰. 성공한 뒤에만 올린다 — 주문 상세와 같은 규칙이다.
@@ -135,16 +144,28 @@ export function usePurchasePage(): PurchasePageState {
     [stockMovements, items, warehouses, plan],
   )
 
-  const receiptQuantity = useCallback(
-    (documentId: string) => {
-      const override = receipts[documentId]
-      if (override !== undefined) return override
-      // 기본값은 잔여 전량 — 부분 입고가 예외이고 전량 입고가 보통이다
-      const row = allRows.find((candidate) => candidate.documentId === documentId)
-      return String(row?.remainingQuantity ?? 0)
-    },
-    [receipts, allRows],
+  const openDocument = useMemo(
+    () => allRows.find((row) => row.documentId === openId) ?? null,
+    [allRows, openId],
   )
+
+  const openItem = openDocument ? findItem(items, openDocument.itemCode) : undefined
+  const serialManaged = openItem ? isSerialManaged(openItem) : false
+
+  /**
+   * 자동 채번한 시리얼번호.
+   *
+   * 잔여 전량 기준으로 미리 만든다 — 담당자가 수량을 줄이면 앞에서부터 잘라 쓰고,
+   * 늘릴 수는 없으므로(잔여가 상한) 모자랄 일이 없다.
+   */
+  const suggestedSerials = useMemo(() => {
+    if (!openDocument || !serialManaged) return []
+    return serialRepository.nextSerialNumbers(
+      serials,
+      openDocument.itemCode,
+      openDocument.remainingQuantity,
+    )
+  }, [openDocument, serialManaged, serials])
 
   return {
     rows,
@@ -166,29 +187,51 @@ export function usePurchasePage(): PurchasePageState {
     summaryItems,
     rowTone: rowToneOf,
 
-    receiptQuantity,
-    setReceiptQuantity: (documentId, value) =>
-      setReceipts((previous) => ({ ...previous, [documentId]: value })),
-    receive: (documentId) => {
-      const quantity = Number(receiptQuantity(documentId))
+    openDocument,
+    suggestedSerials,
+    serialManaged,
+
+    openReceipt: (documentId) => navigate(`/inbound/${documentId}`),
+    closeReceipt: () => navigate('/inbound'),
+
+    submitReceipt: (draft) => {
+      if (!openDocument) return
+
+      /*
+       * 생산의뢰는 검사 기록이 먼저다. 검사가 실패하면 입고로 넘어가지 않는다 —
+       * 두 처리를 한 번에 보내지만 순서는 규칙이다.
+       */
+      if (draft.inspection) {
+        const inspected = inspectDocument(openDocument.documentId, {
+          passedQuantity: draft.inspection.passedQuantity,
+          failedQuantity: draft.inspection.failedQuantity,
+          ...(draft.inspection.note ? { note: draft.inspection.note } : {}),
+        })
+        if (!report(inspected, ACTION_SUCCESS.INSPECT)) return
+
+        // 전량 불합격이면 들어올 것이 없다. 문서만 닫고 끝낸다.
+        if (draft.quantity <= 0) {
+          navigate('/inbound')
+          return
+        }
+      }
+
       const outcome = receiveIncoming(
-        documentId,
-        Number.isFinite(quantity) ? quantity : 0,
-        `RECEIVE:${documentId}:${token}`,
+        openDocument.documentId,
+        draft.quantity,
+        `RECEIVE:${openDocument.documentId}:${token}`,
+        draft.serialNumbers.length > 0 ? draft.serialNumbers : undefined,
       )
 
       if (report(outcome, ACTION_SUCCESS.RECEIVE)) {
         // 성공했을 때만 토큰을 올린다 — 같은 버튼을 두 번 누르면 토큰이 같아 막힌다
         setToken((previous) => previous + 1)
-        // 입력을 비워 잔여수량 기준으로 다시 채워지게 한다
-        setReceipts((previous) => {
-          const { [documentId]: _consumed, ...rest } = previous
-          return rest
-        })
+        navigate('/inbound')
       }
     },
-    inspect: (documentId) => {
-      report(inspectDocument(documentId), ACTION_SUCCESS.INSPECT)
+
+    confirm: (documentId) => {
+      report(confirmDocument(documentId), ACTION_SUCCESS.CONFIRM)
     },
 
     history,

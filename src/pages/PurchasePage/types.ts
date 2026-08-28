@@ -3,6 +3,7 @@ import type { RowTone } from '@/components/common/DataTable'
 import type { SelectOption } from '@/components/common/Select'
 import type { SummaryCardItem } from '@/components/common/SummaryCards'
 import type { IncomingRow, PurchaseFilter, ReceiptHistoryRow } from '@/features/purchase/types'
+import type { ReceiptDraft } from '@/features/purchase/ReceiveModal'
 
 /**
  * usePurchasePage 의 반환 형태.
@@ -31,11 +32,24 @@ export interface PurchasePageState {
   /** 행 좌측 상태 레일 — 지연된 문서는 단계와 무관하게 붉게 선다 */
   rowTone: (row: IncomingRow) => RowTone
 
-  /** 입고 수량 입력 — 문서별로 들고 있는다 */
-  receiptQuantity: (documentId: string) => string
-  setReceiptQuantity: (documentId: string, value: string) => void
-  receive: (documentId: string) => void
-  inspect: (documentId: string) => void
+  /**
+   * 열려 있는 입고 모달의 문서. 닫혀 있으면 null.
+   *
+   * URL(`/inbound/:documentId`)이 이 값을 정한다 — 딥링크로 바로 열 수 있어야
+   * 다른 화면에서 '이 문서 보기' 로 건너올 수 있다.
+   */
+  openDocument: IncomingRow | null
+  /** 자동 채번한 시리얼번호 — 담당자가 고칠 수 있다 */
+  suggestedSerials: string[]
+  /** 열린 문서가 시리얼 관리 품목인가 */
+  serialManaged: boolean
+
+  openReceipt: (documentId: string) => void
+  closeReceipt: () => void
+  submitReceipt: (draft: ReceiptDraft) => void
+
+  /** 미확정 문서를 확정한다 */
+  confirm: (documentId: string) => void
 
   /** 입고 처리 이력 — 방금 처리한 것이 위로 온다 */
   history: ReceiptHistoryRow[]

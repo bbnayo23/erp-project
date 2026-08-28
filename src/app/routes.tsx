@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { InventoryPage } from '@/pages/InventoryPage'
+import { IssuePage } from '@/pages/IssuePage'
 import { OrderDetailPage } from '@/pages/OrderDetailPage'
 import { PreparationPage } from '@/pages/PreparationPage'
 import { PurchasePage } from '@/pages/PurchasePage'
@@ -19,9 +20,15 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/items" replace /> },
       { path: 'items', element: <InventoryPage /> },
+      // 품목 서랍도 URL 에 반영한다 — 다른 화면에서 '이 품목 보기' 로 건너올 수 있어야 한다
+      { path: 'items/:itemKey', element: <InventoryPage /> },
       { path: 'orders', element: <PreparationPage /> },
       { path: 'orders/:orderId', element: <OrderDetailPage /> },
       { path: 'inbound', element: <PurchasePage /> },
+      // 폼이 열리는 자리는 하나다 — 주문 상세의 부족 품목에서 넘어온다
+      { path: 'inbound/new', element: <IssuePage /> },
+      // 문서 상세는 URL 에 반영한다 — 다른 화면에서 '이 문서 보기' 로 건너올 수 있어야 한다
+      { path: 'inbound/:documentId', element: <PurchasePage /> },
       { path: '*', element: <Navigate to="/items" replace /> },
     ],
   },
