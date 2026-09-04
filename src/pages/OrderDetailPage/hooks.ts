@@ -69,7 +69,7 @@ const EMPTY_SUMMARY = {
  * 액션은 전부 스토어를 부르고 결과 코드만 받는다. 재고를 여기서 계산하거나 판정을 다시
  * 하지 않는다 — 화면이 판단하면 스토어가 다시 확인하는 의미가 없어진다 (가이드 §11).
  */
-export function useOrderDetailPage(): OrderDetailPageState {
+export const useOrderDetailPage = (): OrderDetailPageState => {
   const { orderId = '' } = useParams()
   const navigate = useNavigate()
   const plan = usePreparationPlan()

@@ -1,5 +1,19 @@
-import { globSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+/**
+ * `styled.ts` 파일을 재귀적으로 찾는다.
+ *
+ * `fs.globSync` 를 쓰지 않는다 — Node 22부터 생긴 API라 그보다 낮은 버전에서는
+ * 존재하지 않는다. `readdirSync` 는 모든 버전에 있으므로 이쪽이 더 이식성이 좋다.
+ */
+const findStyledFiles = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return findStyledFiles(path)
+    return entry.name === 'styled.ts' ? [path] : []
+  })
 
 /**
  * 애니메이션은 transform 과 opacity 만 움직인다.
@@ -12,7 +26,7 @@ import { describe, expect, it } from 'vitest'
  * `transition: box-shadow …` 를 적으면 여기서 걸린다.
  */
 describe('애니메이션 속성', () => {
-  const STYLE_FILES = globSync('src/**/styled.ts')
+  const STYLE_FILES = findStyledFiles('src')
 
   /** 합성 단계에서 끝나지 않는 속성 — 전이 대상으로 쓰면 안 된다 */
   const EXPENSIVE = [

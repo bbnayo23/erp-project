@@ -14,7 +14,7 @@ import { useErpStore } from './erpStore'
  * 저장하면 갱신을 잊은 화면이 낡은 판정을 보여줄 수 있다 — 가용재고를 필드로 두지
  * 않는 것과 같은 이유다.
  */
-export function usePreparationPlan(): PreparationPlan {
+export const usePreparationPlan = (): PreparationPlan => {
   const items = useErpStore((state) => state.items)
   const bundleComponents = useErpStore((state) => state.bundleComponents)
   const warehouses = useErpStore((state) => state.warehouses)
@@ -43,7 +43,7 @@ export function usePreparationPlan(): PreparationPlan {
  *
  * 세 화면 머리말이 같은 줄을 쓴다 — 화면마다 다른 자리에 있으면 담당자가 매번 찾는다.
  */
-export function useFreshness(): DataFreshness {
+export const useFreshness = (): DataFreshness => {
   const stockMovements = useErpStore((state) => state.stockMovements)
   const items = useErpStore((state) => state.items)
   const baseAt = useErpStore((state) => state.baseAt)
@@ -60,7 +60,7 @@ export function useFreshness(): DataFreshness {
  * 표에서 그 행을 잠시 표시해, 담당자가 자기 조작이 의도한 자리에 반영됐는지 눈으로
  * 확인할 수 있게 한다.
  */
-export function useRecentChanges(): Map<string, string> {
+export const useRecentChanges = (): Map<string, string> => {
   const stockMovements = useErpStore((state) => state.stockMovements)
   const items = useErpStore((state) => state.items)
 

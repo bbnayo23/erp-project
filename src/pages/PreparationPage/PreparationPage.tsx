@@ -38,7 +38,7 @@ import {
  *
  * 이 컴포넌트에는 재고 계산이 없다. 판정은 도메인이, 표시용 가공은 hooks 가 끝냈다.
  */
-export function PreparationPage() {
+export const PreparationPage = () => {
   const navigate = useNavigate()
   const {
     rows,

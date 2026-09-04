@@ -19,7 +19,7 @@ import { Actions, Facts, Field, Fixed, Form, Layout, Notice, Problem } from './s
  * 구매발주, 생산품 → 생산의뢰), 입고창고는 주문의 출고창고로 고정된다. 드롭다운을 열어
  * 고르게 하면 담당자가 규칙을 깨는 선택을 할 수 있는데, 그건 화면이 막아야 한다.
  */
-export function IssuePage() {
+export const IssuePage = () => {
   const { context, problem, draft, setDraft, supplierOptions, invalid, submit, cancel } =
     useIssuePage()
 

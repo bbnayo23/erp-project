@@ -51,12 +51,12 @@ export type IncomingContext = Pick<ErpDatabase, 'incomingDocuments'>
  * `deliveryDate` 를 주면 그 배송일을 맞출 수 있는 문서만 남긴다. 생략하면 확정된
  * 입고예정 전체 — 특정 주문과 무관하게 '앞으로 들어올 물량' 을 볼 때 쓴다.
  */
-export function findIncomingDocuments(
+export const findIncomingDocuments = (
   ctx: IncomingContext,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
   deliveryDate?: ISODateString,
-): IncomingDocument[] {
+): IncomingDocument[] => {
   return ctx.incomingDocuments
     .filter(
       (document) =>
@@ -68,12 +68,12 @@ export function findIncomingDocuments(
     .sort((a, b) => compareIso(a.availableDate, b.availableDate))
 }
 
-export function calculateIncomingQuantity(
+export const calculateIncomingQuantity = (
   ctx: IncomingContext,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
   deliveryDate?: ISODateString,
-): Quantity {
+): Quantity => {
   return findIncomingDocuments(ctx, itemCode, warehouseCode, deliveryDate).reduce(
     (acc, document) => acc + getRemainingQuantity(document),
     0,
@@ -84,9 +84,9 @@ export function calculateIncomingQuantity(
  * 무엇을 기다리는지 한 가지로 요약한다.
  * 여러 문서가 걸려 있으면 가장 먼저 도착하는 문서를 기준으로 잡는다 — 대기가 풀리는 시점이다.
  */
-export function resolveWaitingReason(
+export const resolveWaitingReason = (
   documents: readonly IncomingDocument[],
-): PreparationWaitingReason | undefined {
+): PreparationWaitingReason | undefined => {
   const first = documents[0]
   if (!first) return undefined
   if (first.documentType === '구매') return 'PURCHASE'

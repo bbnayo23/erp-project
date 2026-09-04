@@ -67,7 +67,7 @@ const excludedEntries = (ctx: PlanPreparationContext): PreparationPlanEntry[] =>
  * 가용재고에서 빠져 있어 물량이 확보된 상태이고, 다시 배정하면 자기 예약 때문에 자기가
  * 부족해진다 (reservedPreparation).
  */
-export function planPreparation(ctx: PlanPreparationContext): PreparationPlan {
+export const planPreparation = (ctx: PlanPreparationContext): PreparationPlan => {
   const ledger = createAllocationLedger(ctx)
 
   const entries = sortOrdersByPriority(

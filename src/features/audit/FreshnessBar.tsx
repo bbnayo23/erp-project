@@ -17,7 +17,7 @@ export interface FreshnessBarProps {
  *
  * 세 화면 머리말에 같은 줄을 둔다. 화면마다 다른 자리에 있으면 담당자가 매번 찾는다.
  */
-export function FreshnessBar({ freshness, className }: FreshnessBarProps) {
+export const FreshnessBar = ({ freshness, className }: FreshnessBarProps) => {
   const { baseAt, changeCount, lastChange } = freshness
 
   return (

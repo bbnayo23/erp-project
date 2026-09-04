@@ -4,7 +4,7 @@ import { Overlay, useOverlay } from '@/components/common/Overlay'
 import { Body, Description, Footer, Header, Panel, Title, TitleGroup } from './styled'
 import type { ModalProps } from './types'
 
-export function Modal({
+export const Modal = ({
   open,
   onClose,
   title,
@@ -14,7 +14,7 @@ export function Modal({
   size = 'md',
   closeOnOverlayClick = true,
   closeOnEsc = true,
-}: ModalProps) {
+}: ModalProps) => {
   const { panelRef } = useOverlay<HTMLDivElement>({ open, onClose, closeOnEsc })
 
   if (!open) return null

@@ -61,10 +61,10 @@ export interface ReserveOrderResult {
  * 예약은 현재고를 줄이지 않는다. 물건은 아직 창고에 있고, 다른 주문이 쓰지 못하게
  * 잡아두는 것뿐이다. 실제 차감은 출고(shipOrder)에서 일어난다 (가이드 §25).
  */
-export function reserveOrder(
+export const reserveOrder = (
   ctx: ReserveOrderContext,
   { order, preparation, requestId, reservedAt }: ReserveOrderInput,
-): ReserveOrderResult {
+): ReserveOrderResult => {
   const unchanged = {
     inventories: ctx.inventories,
     serials: ctx.serials,

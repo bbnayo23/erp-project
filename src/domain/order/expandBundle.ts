@@ -25,14 +25,14 @@ interface Accumulator {
   emptyBundle: Set<ItemCode>
 }
 
-function walk(
+const walk = (
   items: readonly Item[],
   bundleComponents: readonly BundleComponent[],
   itemCode: ItemCode,
   quantity: Quantity,
   trail: readonly ItemCode[],
   acc: Accumulator,
-): void {
+): void => {
   const item = findItem(items, itemCode)
 
   if (!item) {
@@ -102,23 +102,23 @@ const emptyAccumulator = (): Accumulator => ({
  * 세트 안에 세트가 들어올 수 있어 재귀로 내려간다. 같은 실물 품목이 여러 경로로
  * 나오면 합산한다 — 재고 예약은 품목 단위로 일어난다.
  */
-export function expandBundle(
+export const expandBundle = (
   items: readonly Item[],
   bundleComponents: readonly BundleComponent[],
   itemCode: ItemCode,
   quantity: Quantity,
-): ExpandBundleResult {
+): ExpandBundleResult => {
   const acc = emptyAccumulator()
   walk(items, bundleComponents, itemCode, quantity, [], acc)
   return toResult(acc)
 }
 
 /** 여러 라인을 한 번에 전개하고 품목 단위로 합산한다 */
-export function expandBundleLines(
+export const expandBundleLines = (
   items: readonly Item[],
   bundleComponents: readonly BundleComponent[],
   lines: readonly DemandLine[],
-): ExpandBundleResult {
+): ExpandBundleResult => {
   const acc = emptyAccumulator()
   for (const line of lines) {
     walk(items, bundleComponents, line.itemCode, line.quantity, [], acc)

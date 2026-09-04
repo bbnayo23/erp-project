@@ -31,7 +31,7 @@ const CONFIRMED_STATUS: Record<IncomingDocument['documentType'], IncomingProgres
  * **재고는 움직이지 않는다.** 확정은 '이 물량을 세어도 된다' 는 선언일 뿐, 물건이 창고에
  * 들어오는 것은 입고 처리다.
  */
-export function confirmIncoming(document: IncomingDocument): ConfirmResult {
+export const confirmIncoming = (document: IncomingDocument): ConfirmResult => {
   if (document.confirmed) return { ok: false, failure: 'ALREADY_CONFIRMED', document }
 
   return {

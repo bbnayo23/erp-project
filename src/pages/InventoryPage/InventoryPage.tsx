@@ -56,7 +56,7 @@ const signOf = (label: string): 'up' | 'down' | 'none' => {
   return 'none'
 }
 
-export function InventoryPage() {
+export const InventoryPage = () => {
   const {
     rows,
     totalCount,

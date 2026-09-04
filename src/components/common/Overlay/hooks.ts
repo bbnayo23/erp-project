@@ -9,11 +9,11 @@ import type { UseOverlayOptions } from './types'
  *
  * 반환한 ref 를 패널 엘리먼트에 붙여야 포커스 이동이 동작한다.
  */
-export function useOverlay<T extends HTMLElement>({
+export const useOverlay = <T extends HTMLElement>({
   open,
   onClose,
   closeOnEsc = true,
-}: UseOverlayOptions) {
+}: UseOverlayOptions) => {
   const panelRef = useRef<T>(null)
 
   useEffect(() => {

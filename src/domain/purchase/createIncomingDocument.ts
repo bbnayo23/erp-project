@@ -41,7 +41,7 @@ const initialInspectionStatus = (type: IncomingDocumentType): InspectionStatus =
  * documentId 와 orderedAt 을 주입받는 이유: 순수 함수로 두면 같은 입력에 같은 문서가
  * 나오고 테스트가 결정적이 된다.
  */
-export function createIncomingDocument({
+export const createIncomingDocument = ({
   documentId,
   item,
   supplier,
@@ -49,7 +49,7 @@ export function createIncomingDocument({
   quantity,
   orderedAt,
   relatedOrderId,
-}: CreateIncomingDocumentInput): IncomingDocument {
+}: CreateIncomingDocumentInput): IncomingDocument => {
   const documentType = documentTypeOf(item)
 
   return {

@@ -5,7 +5,7 @@ import { Icon } from '@/components/common/Icon'
 import { NAVIGATION } from './constants'
 import { Bar, Brand, BrandName, Item, Logo, Nav, Right } from './styled'
 
-export function GNB() {
+export const GNB = () => {
   const { mode, toggleMode } = useThemeMode()
 
   return (

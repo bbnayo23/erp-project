@@ -13,7 +13,7 @@ import type { OrderPreparation, PreparationItem, Reservation } from '@/types'
  * 그래서 예약 기록이 있으면 원장을 건드리지 않고 그 기록을 그대로 판정으로 옮긴다.
  * 소요량·배정량은 예약된 수량이고, 부족분은 없다.
  */
-export function preparationFromReservation(reservation: Reservation): OrderPreparation {
+export const preparationFromReservation = (reservation: Reservation): OrderPreparation => {
   const items = reservation.lines.map<PreparationItem>((line) => ({
     itemCode: line.itemCode,
     requiredQuantity: line.quantity,

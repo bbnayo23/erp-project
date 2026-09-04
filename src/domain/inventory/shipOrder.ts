@@ -46,10 +46,10 @@ const SHIPPED: OrderStatus = '출고 완료'
  * 중복 출고는 세 겹으로 막는다 — 요청 ID, 주문상태, 예약 기록의 소비.
  * 예약을 소비하면서 처리하므로 요청 ID 가 달라도 두 번째 출고는 NOT_RESERVED 가 된다.
  */
-export function shipOrder(
+export const shipOrder = (
   ctx: ShipOrderContext,
   { order, requestId, shippedAt }: ShipOrderInput,
-): ShipOrderResult {
+): ShipOrderResult => {
   const unchanged = {
     inventories: ctx.inventories,
     serials: ctx.serials,

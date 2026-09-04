@@ -48,7 +48,7 @@ import {
  * 버튼은 상태에 따라 감춘다. 비활성 버튼을 남겨두면 왜 안 되는지를 버튼에서 찾게 되는데,
  * 이유는 품목 표와 확인 필요 사유에 있다.
  */
-export function OrderDetailPage() {
+export const OrderDetailPage = () => {
   const navigate = useNavigate()
   const {
     found,

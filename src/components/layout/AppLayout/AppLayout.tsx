@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { GNB } from '@/components/layout/GNB'
 import { Content, Inner, Shell } from './styled'
 
-export function AppLayout() {
+export const AppLayout = () => {
   return (
     <Shell>
       <GNB />

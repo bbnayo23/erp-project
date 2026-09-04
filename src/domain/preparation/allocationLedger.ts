@@ -73,7 +73,7 @@ export type LedgerContext = Pick<ErpDatabase, 'inventories' | 'incomingDocuments
 export const ledgerKey = (itemCode: ItemCode, warehouseCode: WarehouseCode): string =>
   `${itemCode}@${warehouseCode}`
 
-export function createAllocationLedger(ctx: LedgerContext): AllocationLedger {
+export const createAllocationLedger = (ctx: LedgerContext): AllocationLedger => {
   const stock = new Map<string, Quantity>()
   for (const inventory of ctx.inventories) {
     stock.set(
@@ -117,13 +117,13 @@ export function createAllocationLedger(ctx: LedgerContext): AllocationLedger {
  * 잡을 뻔한 몫은 뒤 주문에 그대로 남는다. 판정을 마쳐야 그 주문이 부족한지 알 수 있으니
  * 계산과 반영을 같은 함수에서 할 수 없다.
  */
-export function simulate(
+export const simulate = (
   ledger: AllocationLedger,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
   requiredQuantity: Quantity,
   deliveryDate: ISODateString,
-): Allocation {
+): Allocation => {
   const key = ledgerKey(itemCode, warehouseCode)
 
   const availableQuantity = ledger.stock.get(key) ?? 0
@@ -167,7 +167,7 @@ export function simulate(
  * 뒤 주문이 쓸 수 있다 — 배송일이 늦은 주문이 먼저 가져가는 셈이지만, 나가지도 못할
  * 주문이 재고를 붙잡아 뒤 주문까지 막는 것보다 낫다. (README '설계 결정')
  */
-export function commit(ledger: AllocationLedger, allocations: readonly Allocation[]): void {
+export const commit = (ledger: AllocationLedger, allocations: readonly Allocation[]): void => {
   for (const allocation of allocations) {
     const remainingStock = (ledger.stock.get(allocation.key) ?? 0) - allocation.allocatedFromStock
     ledger.stock.set(allocation.key, remainingStock)

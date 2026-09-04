@@ -8,12 +8,12 @@ import { compareIso } from '@/utils/date'
  * 입고일시가 같으면 시리얼번호로 갈라 결과를 결정적으로 만든다. 그래야 같은 입력에
  * 같은 배정이 나오고 테스트가 안정적이다.
  */
-export function pickSerials(
+export const pickSerials = (
   serials: readonly SerialInventory[],
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
   quantity: Quantity,
-): SerialInventory[] {
+): SerialInventory[] => {
   return serials
     .filter(
       (serial) =>

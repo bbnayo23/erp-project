@@ -9,9 +9,9 @@ import type { DataFreshness, RecentChange } from './types'
  * 재고 변동 이력(`stockMovements`)이 곧 '내가 처리한 것' 의 목록이다. 시드에는 이력이
  * 없으므로(앱이 만드는 컬렉션) 길이가 그대로 처리 횟수가 된다.
  */
-export function toFreshness(
+export const toFreshness = (
   ctx: Pick<ErpDatabase, 'stockMovements' | 'items' | 'baseAt'>,
-): DataFreshness {
+): DataFreshness => {
   const last = ctx.stockMovements.at(-1)
 
   return {
@@ -40,9 +40,9 @@ const describe = (movement: StockMovement, items: ErpDatabase['items']) => {
  *
  * 이전 처리까지 표시하지 않는 이유: '방금' 이 두 번이면 어느 쪽이 방금인지 알 수 없다.
  */
-export function toRecentChanges(
+export const toRecentChanges = (
   ctx: Pick<ErpDatabase, 'stockMovements' | 'items'>,
-): RecentChange[] {
+): RecentChange[] => {
   const last = ctx.stockMovements.at(-1)
   if (!last) return []
 

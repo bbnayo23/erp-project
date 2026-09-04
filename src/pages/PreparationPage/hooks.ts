@@ -37,7 +37,7 @@ export const RESERVED_FILTER_OPTIONS = [
  * 판정은 전부 도메인에서 끝나 있다. 여기서 하는 일은 계획을 표 한 줄로 옮기고,
  * 필터를 걸고, 지표를 세는 것뿐이다 — 재고 계산은 한 줄도 없다 (가이드 §30).
  */
-export function usePreparationPage(): PreparationPageState {
+export const usePreparationPage = (): PreparationPageState => {
   const plan = usePreparationPlan()
 
   const items = useErpStore((state) => state.items)

@@ -34,13 +34,13 @@ import type { ReceiptDraft, ReceiveModalProps } from './types'
  * 문서 기준으로 다시 채워진다 — effect 로 초기화하면 한 번 그린 뒤 다시 그리는 연쇄
  * 렌더가 되고, 앞서 연 문서의 수량이 한 프레임 동안 남는다.
  */
-export function ReceiveModal({
+export const ReceiveModal = ({
   row,
   suggestedSerials,
   serialManaged,
   onClose,
   onSubmit,
-}: ReceiveModalProps) {
+}: ReceiveModalProps) => {
   const production = row?.documentType === '생산'
 
   const [quantity, setQuantity] = useState(String(row?.remainingQuantity ?? 0))

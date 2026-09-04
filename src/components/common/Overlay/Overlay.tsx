@@ -8,7 +8,7 @@ import type { OverlayProps } from './types'
  * 닫기 판정에 mousedown 을 쓰는 이유: 패널 안에서 드래그를 시작해 딤에서 손을 떼는
  * 경우에도 click 은 딤에서 발생해 의도치 않게 닫힌다.
  */
-export function Overlay({ align = 'center', layer = 'modal', onDismiss, children }: OverlayProps) {
+export const Overlay = ({ align = 'center', layer = 'modal', onDismiss, children }: OverlayProps) => {
   return createPortal(
     <OverlayRoot
       $align={align}

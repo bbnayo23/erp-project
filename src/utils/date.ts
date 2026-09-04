@@ -26,12 +26,12 @@ const fromUtcMillis = (millis: number): string => {
 }
 
 /** 시각과 오프셋은 유지하고 날짜만 옮긴다 */
-export function addDays(iso: ISODateString, days: number): ISODateString {
+export const addDays = (iso: ISODateString, days: number): ISODateString => {
   return fromUtcMillis(toUtcMillis(dateOf(iso)) + days * 86_400_000) + timeOf(iso)
 }
 
 /** 달력 날짜 기준 일수 차 (시각은 무시) */
-export function diffDays(from: ISODateString, to: ISODateString): number {
+export const diffDays = (from: ISODateString, to: ISODateString): number => {
   return Math.round((toUtcMillis(dateOf(to)) - toUtcMillis(dateOf(from))) / 86_400_000)
 }
 
@@ -50,7 +50,7 @@ export const formatDateTime = (iso: ISODateString | undefined): string =>
   iso ? `${formatDate(iso)} ${iso.slice(11, 16)}` : '-'
 
 /** 기준일 대비 납기 문장 */
-export function formatDueLabel(due: ISODateString, baseAt: ISODateString): string {
+export const formatDueLabel = (due: ISODateString, baseAt: ISODateString): string => {
   const days = diffDays(baseAt, due)
   if (days === 0) return '오늘'
   if (days > 0) return `${days}일 남음`

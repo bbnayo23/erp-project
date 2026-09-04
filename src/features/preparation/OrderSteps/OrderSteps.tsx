@@ -22,7 +22,7 @@ export interface OrderStepsProps {
  * 끝난 칸에 체크를 붙이는 이유: 색만으로 done/todo 를 가르면 흑백 출력과 색각 이상에서
  * 구분이 사라진다.
  */
-export function OrderSteps({ steps, current, action, fallback }: OrderStepsProps) {
+export const OrderSteps = ({ steps, current, action, fallback }: OrderStepsProps) => {
   return (
     <div>
       <Root aria-label="처리 단계">

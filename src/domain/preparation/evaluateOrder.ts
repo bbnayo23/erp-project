@@ -62,11 +62,11 @@ const blocked = (
  * 이 주문이 쓸 수 있다고 본다. 목록 화면은 반드시 planPreparation 을 거쳐야 한다.
  * 주문마다 원장을 새로 만들면 같은 재고를 여러 주문이 각각 쓸 수 있다고 판정한다.
  */
-export function evaluateOrder(
+export const evaluateOrder = (
   ctx: EvaluateOrderContext,
   order: Order,
   ledger: AllocationLedger = createAllocationLedger(ctx),
-): OrderPreparation {
+): OrderPreparation => {
   if (!isPreparationTarget(order)) {
     return blocked(order.orderId, [
       {

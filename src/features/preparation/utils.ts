@@ -94,7 +94,7 @@ export const slowestWaitingReason = (
  *
  * 대기 중이면 무엇을 기다리는지까지 배지에 담는다 (명세 21-1 준비상태 6종).
  */
-export function statusDescriptorOf(preparation: OrderPreparation): StatusDescriptor {
+export const statusDescriptorOf = (preparation: OrderPreparation): StatusDescriptor => {
   if (preparation.status !== 'WAITING') return PREPARATION_STATUS[preparation.status]
 
   const reason = slowestWaitingReason(preparation)
@@ -132,11 +132,11 @@ const joinNames = (names: readonly string[], limit = 2): string => {
  * 상태 배지만으로는 다음 행동을 알 수 없다. '입고 대기' 는 기다리면 되고 '재고 부족' 은
  * 발주해야 하는데, 무엇을 기다리는지 · 무엇이 모자라는지가 있어야 판단할 수 있다.
  */
-export function describePreparation(
+export const describePreparation = (
   preparation: OrderPreparation,
   items: readonly Item[],
   reserved = false,
-): string {
+): string => {
   if (reserved) return '재고 확보 완료 — 출고할 수 있습니다'
 
   if (preparation.status === 'EXCEPTION') {
@@ -165,12 +165,12 @@ export function describePreparation(
   return '가용재고로 전량 준비 가능'
 }
 
-export function toPreparationRow(
+export const toPreparationRow = (
   entry: PreparationPlanEntry,
   items: readonly Item[],
   warehouses: readonly Warehouse[],
   baseAt: ISODateString,
-): PreparationRow {
+): PreparationRow => {
   const { order, preparation, priority, reserved } = entry
   const warehouse = findWarehouse(warehouses, order.warehouseCode)
 
@@ -213,7 +213,7 @@ export interface DeliveryGroup {
   rows: PreparationRow[]
 }
 
-export function groupByDeliveryDate(rows: readonly PreparationRow[]): DeliveryGroup[] {
+export const groupByDeliveryDate = (rows: readonly PreparationRow[]): DeliveryGroup[] => {
   const groups: DeliveryGroup[] = []
 
   for (const row of rows) {
@@ -264,13 +264,13 @@ const sameSelection = (a: SummarySelection, b: SummarySelection): boolean =>
  * `selection` 을 넘기면 카드가 필터 버튼이 된다. 예약 완료를 '바로 준비 가능' 카드의
  * 힌트로 두지 않고 카드로 올린 이유도 이것이다 — 힌트는 누를 수 없다.
  */
-export function toSummaryItems(
+export const toSummaryItems = (
   rows: readonly PreparationRow[],
   selection?: {
     current: SummarySelection
     onSelect: (next: SummarySelection) => void
   },
-): SummaryCardItem[] {
+): SummaryCardItem[] => {
   const countOf = (status: PreparationStatus) => rows.filter((row) => row.status === status).length
 
   const overdue = rows.filter((row) => row.overdue).length
@@ -401,11 +401,11 @@ const STEP_ORDER: OrderStepKey[] = ['ISSUE', 'RECEIVE', 'RESERVE', 'SHIP']
  * 재고로 바로 채워지는 주문의 발주 · 입고 칸은 TODO 가 아니라 SKIPPED 다. 할 일이
  * 남은 것처럼 보이면 담당자가 발주를 찾는다.
  */
-export function toOrderSteps(
+export const toOrderSteps = (
   preparation: OrderPreparation,
   reserved: boolean,
   orderStatus: OrderStatus,
-): OrderStep[] {
+): OrderStep[] => {
   const shipped = orderStatus === '출고 완료' || orderStatus === '배송 완료'
 
   const stateOf = (key: OrderStepKey): OrderStepState => {
@@ -448,11 +448,11 @@ export const currentStep = (steps: readonly OrderStep[]): OrderStep | undefined 
  * 판정하지 않는다. 각 줄이 준비 수요로 어떻게 옮겨졌는지 한 줄로 적기만 한다 —
  * 세트는 무엇으로 풀렸고, 취소·서비스는 왜 빠졌는지.
  */
-export function toOrderedItemRows(
+export const toOrderedItemRows = (
   order: Order,
   items: readonly Item[],
   bundleComponents: readonly BundleComponent[],
-): OrderedItemRow[] {
+): OrderedItemRow[] => {
   return order.items.map((line) => {
     const master = findItem(items, line.itemCode)
 
@@ -502,10 +502,10 @@ export function toOrderedItemRows(
   })
 }
 
-export function toItemRows(
+export const toItemRows = (
   preparation: OrderPreparation,
   items: readonly Item[],
-): PreparationItemRow[] {
+): PreparationItemRow[] => {
   return preparation.items.map((line) => {
     const master = findItem(items, line.itemCode)
 
@@ -539,11 +539,11 @@ export function toItemRows(
   })
 }
 
-export function toSerialRows(
+export const toSerialRows = (
   serials: readonly SerialInventory[],
   items: readonly Item[],
   orderId: string,
-): AssignedSerialRow[] {
+): AssignedSerialRow[] => {
   return serials
     .filter((serial) => serial.reservedOrderId === orderId)
     .map((serial) => ({
@@ -555,12 +555,12 @@ export function toSerialRows(
     }))
 }
 
-export function toIncomingRow(
+export const toIncomingRow = (
   document: IncomingDocument,
   items: readonly Item[],
   suppliers: readonly Supplier[],
   deliveryDate: ISODateString,
-): IncomingDocumentRow {
+): IncomingDocumentRow => {
   const remainingQuantity = getRemainingQuantity(document)
 
   return {

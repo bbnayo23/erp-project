@@ -38,12 +38,12 @@ export interface InspectionResult {
  * 없는 문서가 되고, 그 물량을 기다리던 주문은 다음 판정에서 `재고 부족` 으로 내려가
  * 발주 대상이 된다. 이것이 올바른 결과다.
  */
-export function recordInspection({
+export const recordInspection = ({
   document,
   passedQuantity,
   failedQuantity,
   note,
-}: InspectionInput): InspectionResult {
+}: InspectionInput): InspectionResult => {
   const unchanged = { document }
 
   if (!isInspectionPending(document)) {

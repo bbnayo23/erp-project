@@ -24,7 +24,7 @@ const DEFAULT_DURATION: Record<ToastTone, number> = {
  * 토스트는 하나만 띄우지 않고 쌓는다. 입고를 연달아 처리하면 각각의 결과가 남아야
  * 담당자가 몇 건을 처리했는지 셀 수 있다.
  */
-export function ToastProvider({ children }: { children: ReactNode }) {
+export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
   /**
@@ -104,7 +104,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
  * 프로바이더 밖에서 부르면 던진다 — 결과를 알릴 길이 없는데 조용히 넘어가면 담당자는
  * 처리가 안 된 줄 안다.
  */
-export function useToast(): ToastApi {
+export const useToast = (): ToastApi => {
   const api = useContext(ToastContext)
   if (!api) throw new Error('useToast 는 ToastProvider 안에서만 쓸 수 있습니다')
   return api

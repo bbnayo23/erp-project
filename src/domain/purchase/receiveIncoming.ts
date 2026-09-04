@@ -69,10 +69,10 @@ const nextStatus = (document: IncomingDocument): IncomingProgressStatus =>
  * 시리얼 관리 품목은 입고 수량만큼 개체 행을 만든다. 수량만 늘리고 개체를 만들지 않으면
  * 04_재고현황과 05_개체재고가 어긋나 예약 시점에 배정할 개체가 없어진다.
  */
-export function receiveIncoming(
+export const receiveIncoming = (
   ctx: ReceiveContext,
   { document, item, quantity, requestId, receivedAt, serialNumbers = [] }: ReceiveIncomingInput,
-): ReceiveIncomingResult {
+): ReceiveIncomingResult => {
   const unchanged = {
     document,
     inventories: ctx.inventories,
@@ -162,7 +162,7 @@ export function receiveIncoming(
 }
 
 /** 검사 통과 처리 — 검사가 끝나야 입고할 수 있다 (가이드 §16) */
-export function completeInspection(document: IncomingDocument): IncomingDocument {
+export const completeInspection = (document: IncomingDocument): IncomingDocument => {
   if (!isInspectionPending(document)) return document
   return { ...document, inspectionStatus: '검사 완료', status: '검사 완료' }
 }

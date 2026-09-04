@@ -2,7 +2,7 @@ import { RouterProvider } from 'react-router-dom'
 import { AppProviders } from './providers'
 import { router } from './routes'
 
-export function App() {
+export const App = () => {
   return (
     <AppProviders>
       <RouterProvider router={router} />

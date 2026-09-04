@@ -1,7 +1,7 @@
 import { Actions, Description, Root, Title, TitleGroup } from './styled'
 import type { PageHeaderProps } from './types'
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export const PageHeader = ({ title, description, actions }: PageHeaderProps) => {
   return (
     <Root>
       <TitleGroup>

@@ -16,7 +16,7 @@ import type { AlertModalProps } from './types'
  *
  * 딤 클릭과 ESC 는 취소로 본다 — 실수로 닫았을 때 잃는 쪽이 아니어야 한다.
  */
-export function AlertModal({
+export const AlertModal = ({
   open,
   title,
   description,
@@ -25,7 +25,7 @@ export function AlertModal({
   cancelLabel = '취소',
   onConfirm,
   onCancel,
-}: AlertModalProps) {
+}: AlertModalProps) => {
   const { panelRef } = useOverlay<HTMLDivElement>({ open, onClose: onCancel })
   const cancelRef = useRef<HTMLButtonElement>(null)
 

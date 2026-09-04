@@ -19,7 +19,7 @@ export type ReportAction = (outcome: ActionOutcome, success: ActionSuccessMessag
  *
  * 성공 여부를 돌려준다 — 호출부가 요청 토큰을 올리거나 입력을 비우는 데 쓴다.
  */
-export function useActionReport(): ReportAction {
+export const useActionReport = (): ReportAction => {
   const toast = useToast()
 
   return useCallback(

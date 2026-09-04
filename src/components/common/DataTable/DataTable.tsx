@@ -9,7 +9,7 @@ const alignOf = <T,>(column: DataTableColumn<T>) =>
 
 const DEFAULT_MAX_HEIGHT = '640px'
 
-export function DataTable<T>({
+export const DataTable = <T,>({
   columns,
   data,
   groups,
@@ -23,7 +23,7 @@ export function DataTable<T>({
   stickyHeader = false,
   maxHeight,
   className,
-}: DataTableProps<T>) {
+}: DataTableProps<T>) => {
   /**
    * 행 하나.
    *

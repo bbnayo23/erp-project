@@ -10,7 +10,7 @@ import type { Order, OrderItem, OrderRow } from '@/types'
  * 주문 머리 정보(주문상태·창고·일자)는 순번이 가장 앞선 행에서 가져온다.
  * '취소' 품목도 items 에 남긴다 — 준비 대상에서는 빠지지만 목록에는 보여야 한다.
  */
-export function groupOrderRows(rows: readonly OrderRow[]): Order[] {
+export const groupOrderRows = (rows: readonly OrderRow[]): Order[] => {
   const grouped = new Map<string, OrderRow[]>()
 
   for (const row of rows) {

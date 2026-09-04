@@ -9,7 +9,7 @@ import type { DrawerProps } from './types'
  *
  * 모달과 달리 배경 목록이 계속 보이므로, 표에서 한 건씩 훑어보는 상세 화면에 쓴다.
  */
-export function Drawer({
+export const Drawer = ({
   open,
   onClose,
   title,
@@ -19,7 +19,7 @@ export function Drawer({
   width,
   closeOnOverlayClick = true,
   closeOnEsc = true,
-}: DrawerProps) {
+}: DrawerProps) => {
   const { panelRef } = useOverlay<HTMLElement>({ open, onClose, closeOnEsc })
 
   if (!open) return null

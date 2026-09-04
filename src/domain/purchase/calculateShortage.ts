@@ -28,7 +28,7 @@ export interface ShortageLine {
  *
  * EXCEPTION 은 제외한다. 미등록 품목이나 사용 중지 창고는 발주로 해결되지 않는다 (§19).
  */
-export function calculateShortage(plan: PreparationPlan): ShortageLine[] {
+export const calculateShortage = (plan: PreparationPlan): ShortageLine[] => {
   const buckets = new Map<
     string,
     {

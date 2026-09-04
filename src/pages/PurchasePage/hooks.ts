@@ -39,7 +39,7 @@ const EMPTY_FILTER: PurchaseFilter = {
  * 재고를 여기서 계산하거나 판정을 다시 하지 않는다. 액션은 스토어를 부르고 결과 코드만
  * 받는다 — 화면이 판단하면 스토어가 다시 확인하는 의미가 없어진다 (가이드 §11).
  */
-export function usePurchasePage(): PurchasePageState {
+export const usePurchasePage = (): PurchasePageState => {
   // 입고 뒤 어느 주문이 풀렸는지 보여주려면 판정이 필요하다. 계획을 만드는 법은
   // 스토어 훅 한 곳에 둔다 — 화면마다 조립하면 배정 순서가 화면마다 달라진다.
   const plan = usePreparationPlan()

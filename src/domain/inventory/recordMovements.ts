@@ -29,11 +29,11 @@ export interface MovementContext {
 const key = (inventory: Pick<Inventory, 'itemCode' | 'warehouseCode'>): string =>
   `${inventory.itemCode}:${inventory.warehouseCode}`
 
-export function recordMovements(
+export const recordMovements = (
   before: readonly Inventory[],
   after: readonly Inventory[],
   ctx: MovementContext,
-): StockMovement[] {
+): StockMovement[] => {
   const previous = new Map(before.map((inventory) => [key(inventory), inventory]))
 
   const movements: StockMovement[] = []

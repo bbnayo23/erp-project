@@ -17,7 +17,7 @@ import type { SummaryCardItem, SummaryCardsProps } from './types'
  * `onSelect` 가 있으면 칸이 필터 버튼이 된다. 담당자가 '재고 부족 8건' 을 보고 그
  * 8건을 보려면 아래 필터를 다시 찾아 고르는 게 아니라 방금 본 숫자를 누르면 된다.
  */
-function CardContent({ item }: { item: SummaryCardItem }) {
+const CardContent = ({ item }: { item: SummaryCardItem }) => {
   return (
     <>
       <Head>
@@ -38,7 +38,7 @@ function CardContent({ item }: { item: SummaryCardItem }) {
   )
 }
 
-export function SummaryCards({ items, label, className }: SummaryCardsProps) {
+export const SummaryCards = ({ items, label, className }: SummaryCardsProps) => {
   return (
     <Grid className={className} aria-label={label}>
       {items.map((item) => (

@@ -66,11 +66,11 @@ export const stockKey = (itemCode: ItemCode, warehouseCode: WarehouseCode): stri
  * 가용재고가 있으면 배정할 수 있고, 현재고가 있는데 가용이 0이면 전량 예약된 것이다.
  * 둘 다 없을 때만 입고예정을 본다 — 있는 물건이 기다리는 물건보다 먼저다.
  */
-export function levelOf(
+export const levelOf = (
   currentQuantity: number,
   availableQuantity: number,
   incomingQuantity: number,
-): StockLevel {
+): StockLevel => {
   if (availableQuantity > 0) return 'AVAILABLE'
   if (currentQuantity > 0) return 'RESERVED'
   return incomingQuantity > 0 ? 'INCOMING' : 'EMPTY'
@@ -94,12 +94,12 @@ const countSerials = (
       serial.status === status,
   ).length
 
-function toStockRow(
+const toStockRow = (
   ctx: StockContext,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
   inventory: Inventory | undefined,
-): StockRow {
+): StockRow => {
   const item = findItem(ctx.items, itemCode)
   const warehouse = findWarehouse(ctx.warehouses, warehouseCode)
 
@@ -159,7 +159,7 @@ function toStockRow(
  * 재고 행이 없는 조합도 남기는 이유: 새로 낸 발주는 입고하기 전까지 04_재고현황에
  * 나타나지 않는다. 그때 이 화면이 비어 있으면 담당자는 발주가 사라진 줄 안다.
  */
-export function toStockRows(ctx: StockContext): StockRow[] {
+export const toStockRows = (ctx: StockContext): StockRow[] => {
   const combinations = new Map<string, { itemCode: ItemCode; warehouseCode: WarehouseCode }>()
 
   for (const inventory of ctx.inventories) {
@@ -204,11 +204,11 @@ export const compareRows = (a: StockRow, b: StockRow): number =>
   a.warehouseCode.localeCompare(b.warehouseCode)
 
 /** 한 품목 × 창고의 개체 목록. 먼저 들어온 개체가 위로 온다 — 예약이 FIFO 로 가져가는 순서다. */
-export function toSerialRows(
+export const toSerialRows = (
   serials: readonly SerialInventory[],
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
-): SerialRow[] {
+): SerialRow[] => {
   return serials
     .filter((serial) => serial.itemCode === itemCode && serial.warehouseCode === warehouseCode)
     .map((serial) => ({
@@ -253,13 +253,13 @@ export const rowToneOf = (row: StockRow): RowTone =>
  * 합계 카드(현재고·예약수량·가용재고)는 누를 수 없다. 걸러낼 대상이 아니라 총량이라
  * 버튼으로 두면 눌러도 아무 일이 없는 자리가 생긴다.
  */
-export function toSummaryItems(
+export const toSummaryItems = (
   rows: readonly StockRow[],
   selection?: {
     current: StockLevelFilter
     onSelect: (next: StockLevelFilter) => void
   },
-): SummaryCardItem[] {
+): SummaryCardItem[] => {
   const countOf = (level: StockLevel) => rows.filter((row) => row.level === level).length
   const mismatch = rows.filter((row) => row.serialMismatch).length
   const inactive = rows.filter((row) => row.inactiveWarehouse && row.currentQuantity > 0).length
@@ -340,11 +340,11 @@ export const warehouseFilterOptions = (warehouses: readonly Warehouse[]) => [
  * 판정은 계획이 이미 끝냈다 — 여기서 다시 세지 않고 원장이 나눠 준 결과를 옮기기만
  * 한다. 배정 순서를 함께 보여야 어느 주문부터 풀리는지 알 수 있다.
  */
-export function toItemDemandRows(
+export const toItemDemandRows = (
   plan: PreparationPlan,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
-): ItemDemandRow[] {
+): ItemDemandRow[] => {
   return plan.entries
     .filter((entry) => entry.order.warehouseCode === warehouseCode)
     .flatMap((entry) => {
@@ -367,11 +367,11 @@ export function toItemDemandRows(
 }
 
 /** 이 품목·창고로 걸려 있는 입고예정 문서. 미확정 문서도 남긴다 — 확정하면 쓸 물량이다. */
-export function toItemDocumentRows(
+export const toItemDocumentRows = (
   ctx: Pick<ErpDatabase, 'incomingDocuments' | 'suppliers' | 'baseAt'>,
   itemCode: ItemCode,
   warehouseCode: WarehouseCode,
-): ItemDocumentRow[] {
+): ItemDocumentRow[] => {
   return ctx.incomingDocuments
     .filter(
       (document) => document.itemCode === itemCode && document.warehouseCode === warehouseCode,
@@ -408,11 +408,11 @@ const deltaLabel = (delta: number): string => {
  *
  * 기준시각을 고정해 쓰므로 시각만으로는 순서를 가릴 수 없다. 기록된 순서를 뒤집는다.
  */
-export function toMovementRows(
+export const toMovementRows = (
   movements: readonly StockMovement[],
   ctx: Pick<ErpDatabase, 'items' | 'warehouses'>,
   filter?: { itemCode?: ItemCode; warehouseCode?: WarehouseCode; documentId?: string },
-): StockMovementRow[] {
+): StockMovementRow[] => {
   return movements
     .filter((movement) => {
       if (filter?.itemCode && movement.itemCode !== filter.itemCode) return false

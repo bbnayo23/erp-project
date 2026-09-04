@@ -14,7 +14,7 @@ import type { PanelProps } from './types'
  * 표는 `padded` 없이 그대로 넣는다. 표는 자기 셀에 여백이 있어 구획 여백을 또 주면
  * 첫 글자가 제목보다 안쪽으로 밀린다.
  */
-export function Panel({
+export const Panel = ({
   tone = 'card',
   divided = true,
   title,
@@ -24,7 +24,7 @@ export function Panel({
   padded = false,
   children,
   className,
-}: PanelProps) {
+}: PanelProps) => {
   const hasHead = Boolean(title || description || actions)
 
   return (

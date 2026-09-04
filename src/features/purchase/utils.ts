@@ -53,7 +53,7 @@ export const STAGE_ORDER: PurchaseStage[] = ['INSPECT', 'ARRIVED', 'SCHEDULED', 
  * 순서가 곧 판정이다. 잔여가 없으면 그 뒤 조건은 볼 것이 없고, 확정되지 않은 문서는
  * 검사도 입고도 시작할 수 없다.
  */
-export function stageOf(document: IncomingDocument, baseAt: ISODateString): PurchaseStage {
+export const stageOf = (document: IncomingDocument, baseAt: ISODateString): PurchaseStage => {
   if (getRemainingQuantity(document) === 0) return 'DONE'
   if (!document.confirmed) return 'DRAFT'
   if (isInspectionPending(document)) return 'INSPECT'
@@ -66,7 +66,7 @@ export function stageOf(document: IncomingDocument, baseAt: ISODateString): Purc
  * formatDueLabel 을 쓰지 않는다. 저쪽의 '2일 초과' 는 배송 납기를 넘겼다는 뜻이지만
  * 같은 문장이 여기서는 물건이 늦게 들어오고 있다는 뜻이다 — 담당자가 읽는 사건이 다르다.
  */
-export function arrivalLabel(document: IncomingDocument, baseAt: ISODateString): string {
+export const arrivalLabel = (document: IncomingDocument, baseAt: ISODateString): string => {
   if (getRemainingQuantity(document) === 0) return '입고 완료'
 
   const days = diffDays(baseAt, document.availableDate)
@@ -76,7 +76,7 @@ export function arrivalLabel(document: IncomingDocument, baseAt: ISODateString):
 }
 
 /** 이 단계에서 담당자가 할 일. 배지만으로는 다음 행동을 알 수 없다. */
-function describeStage(stage: PurchaseStage, document: IncomingDocument): string {
+const describeStage = (stage: PurchaseStage, document: IncomingDocument): string => {
   switch (stage) {
     case 'DRAFT':
       return '확정되지 않아 입고예정으로 세지 않습니다'
@@ -91,13 +91,13 @@ function describeStage(stage: PurchaseStage, document: IncomingDocument): string
   }
 }
 
-export function toIncomingRow(
+export const toIncomingRow = (
   document: IncomingDocument,
   items: readonly Item[],
   warehouses: readonly Warehouse[],
   suppliers: readonly Supplier[],
   baseAt: ISODateString,
-): IncomingRow {
+): IncomingRow => {
   const remainingQuantity = getRemainingQuantity(document)
   const stage = stageOf(document, baseAt)
   const warehouse = findWarehouse(warehouses, document.warehouseCode)
@@ -188,13 +188,13 @@ export const rowToneOf = (row: IncomingRow): RowTone =>
  * `selection` 을 넘기면 카드가 필터 버튼이 된다 — '검사 대기 4건' 을 보고 그 4건을
  * 보려면 아래 셀렉트를 다시 찾는 게 아니라 방금 본 숫자를 누르면 된다.
  */
-export function toSummaryItems(
+export const toSummaryItems = (
   rows: readonly IncomingRow[],
   selection?: {
     current: PurchaseStageFilter
     onSelect: (next: PurchaseStageFilter) => void
   },
-): SummaryCardItem[] {
+): SummaryCardItem[] => {
   const countOf = (stage: PurchaseStage) => rows.filter((row) => row.stage === stage).length
 
   const overdue = rows.filter((row) => row.overdue).length

@@ -10,7 +10,7 @@ import type { StatusBadgeProps } from './types'
  * 표를 훑을 때 어느 행이 어떤 상태인지 잡히지 않아, 담당자가 결국 옆의 설명 문구를
  * 한 줄씩 읽게 된다. 톤 테두리와 굵은 글자를 더해 배지 하나로 판단이 끝나게 한다.
  */
-export function StatusBadge({ descriptor, size = 'md' }: StatusBadgeProps) {
+export const StatusBadge = ({ descriptor, size = 'md' }: StatusBadgeProps) => {
   return (
     <Badge tone={descriptor.tone} variant="strong" size={size} dot>
       {descriptor.label}

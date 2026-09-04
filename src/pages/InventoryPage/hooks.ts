@@ -34,7 +34,7 @@ const EMPTY_FILTER: InventoryFilter = {
  * 여기서 하는 일은 재고와 입고예정을 한 줄로 합치고, 필터를 걸고, 개체 목록을 여는
  * 것뿐이다. 가용재고 계산은 도메인이 끝냈다 (가이드 §30).
  */
-export function useInventoryPage(): InventoryPageState {
+export const useInventoryPage = (): InventoryPageState => {
   // 계획은 스토어 훅이 만든다. 여기서 컨텍스트를 다시 조립하면 계획을 만드는 법이
   // 두 곳으로 갈라져, 판정에 필요한 컬렉션이 늘 때 한쪽만 고치는 일이 생긴다.
   const plan = usePreparationPlan()

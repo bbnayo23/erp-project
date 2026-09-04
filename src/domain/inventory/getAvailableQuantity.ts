@@ -6,7 +6,7 @@ import type { Inventory, ItemCode, Quantity, WarehouseCode } from '@/types'
  * 저장하지 않고 매번 계산한다. 현재고나 예약수량만 바꾸고 가용재고 갱신을 잊는
  * 실수가 구조적으로 불가능해야 한다.
  */
-export function getAvailableQuantity(inventory: Inventory | undefined): Quantity {
+export const getAvailableQuantity = (inventory: Inventory | undefined): Quantity => {
   if (!inventory) return 0
   return Math.max(0, inventory.currentQuantity - inventory.reservedQuantity)
 }

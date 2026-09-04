@@ -21,7 +21,7 @@ export interface OrderDemand {
  * '취소' 품목은 제외한다 — 주문은 살아 있고 품목만 빠지는 경우가 있다 (ORD202607200003 3번).
  * 주문상태 자체가 준비 대상인지는 evaluateOrder 가 판단한다.
  */
-export function calculateOrderDemand(ctx: DemandContext, order: Order): OrderDemand {
+export const calculateOrderDemand = (ctx: DemandContext, order: Order): OrderDemand => {
   const invalidQuantityItemCodes: ItemCode[] = []
   const requested: DemandLine[] = []
 
@@ -47,7 +47,7 @@ export function calculateOrderDemand(ctx: DemandContext, order: Order): OrderDem
 }
 
 /** 여러 주문의 품목별 소요량 합계 — 부족분 산출의 입력이 된다 */
-export function aggregateDemand(demands: readonly DemandLine[][]): DemandLine[] {
+export const aggregateDemand = (demands: readonly DemandLine[][]): DemandLine[] => {
   const totals = new Map<ItemCode, number>()
   for (const lines of demands) {
     for (const line of lines) {

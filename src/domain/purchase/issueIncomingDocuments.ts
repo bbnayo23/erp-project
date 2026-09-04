@@ -80,10 +80,10 @@ export interface IssueIncomingResult {
  * 만들 수 없는 부족분은 rejections 로 남긴다. 발주 대상이 아닌 품목이나 공급처 누락은
  * 임의로 대체하지 않는다 (§19) — 담당자가 알아야 하는 사건이다.
  */
-export function issueIncomingDocuments(
+export const issueIncomingDocuments = (
   ctx: IssueIncomingContext,
   { lines, requestId, orderedAt, makeDocumentId }: IssueIncomingInput,
-): IssueIncomingResult {
+): IssueIncomingResult => {
   if (isProcessed(ctx.processedRequests, requestId)) {
     return {
       ok: false,

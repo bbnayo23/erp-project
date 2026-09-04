@@ -17,7 +17,7 @@ import type { IssueDraft, IssuePageState } from './types'
  * 수량이 URL 로 미리 온다. 담당자가 빈 폼을 채우게 하면 규칙(출고창고 = 입고창고,
  * 품목유형 = 문서구분)을 사람이 지켜야 하는데, 그건 화면이 할 일이다.
  */
-export function useIssuePage(): IssuePageState {
+export const useIssuePage = (): IssuePageState => {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const report = useActionReport()

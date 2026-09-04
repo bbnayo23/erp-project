@@ -49,7 +49,7 @@ const STROKED = new Set<IconName>([
   'back',
 ])
 
-export function Icon({ name, size = 18, className }: IconProps) {
+export const Icon = ({ name, size = 18, className }: IconProps) => {
   const stroked = STROKED.has(name)
 
   return (

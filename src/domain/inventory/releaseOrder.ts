@@ -18,7 +18,7 @@ export interface ReleaseOrderResult {
  * 예약한 다른 주문의 몫까지 풀린다.
  * 기록을 지우면서 해제하므로 두 번 호출해도 두 번 빠지지 않는다.
  */
-export function releaseOrder(ctx: ReleaseOrderContext, orderId: OrderId): ReleaseOrderResult {
+export const releaseOrder = (ctx: ReleaseOrderContext, orderId: OrderId): ReleaseOrderResult => {
   const reservation = ctx.reservations.find((candidate) => candidate.orderId === orderId)
 
   if (!reservation) {
