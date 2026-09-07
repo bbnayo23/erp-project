@@ -39,7 +39,7 @@ export const GNB = () => {
           leftIcon={<Icon name="guide" size={13} />}
           onClick={openGuide}
         >
-          발표 가이드
+          가이드
         </Button>
         {/* 백엔드가 없어 새로고침해도 localStorage 에 남는다 — 시드 상태로 되돌리는 길이 필요하다 */}
         <Button
