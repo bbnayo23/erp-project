@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { GNB } from '@/components/layout/GNB'
+import { GuideOverlay } from '@/features/presentationGuide'
 import { Content, Inner, Shell } from './styled'
 
 export const AppLayout = () => {
@@ -12,6 +13,7 @@ export const AppLayout = () => {
           <Outlet />
         </Inner>
       </Content>
+      <GuideOverlay />
     </Shell>
   )
 }

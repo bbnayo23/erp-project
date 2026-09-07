@@ -51,6 +51,13 @@ export const Fixed = styled.span`
   color: ${({ theme }) => theme.colors.textSubtle};
 `
 
+/** 담당자가 채우는 칸 묶음 — Form 의 gap 을 그대로 따른다 */
+export const Fields = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing[3]};
+`
+
 export const Field = styled.label`
   display: flex;
   gap: ${({ theme }) => theme.spacing[2]};

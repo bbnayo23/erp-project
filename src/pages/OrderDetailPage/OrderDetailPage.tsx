@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { Panel } from '@/components/common/Panel'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { TextInput } from '@/components/common/TextInput'
+import { TourTarget } from '@/components/common/TourTarget'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { OrderSteps } from '@/features/preparation/OrderSteps'
 import type {
@@ -34,6 +35,7 @@ import {
   RailMeta,
   RailSticky,
   ReceiveControl,
+  ShortageAction,
   Split,
   StatusCell,
   Summary,
@@ -182,11 +184,14 @@ export const OrderDetailPage = () => {
             머리말의 '부족분 발주' 는 전부를 한 번에 내고, 이 링크는 한 품목만 손본다.
           */}
           {row.shortageQuantity > 0 && (
-            <Link
-              to={`/inbound/new?itemCode=${row.itemCode}&warehouseCode=${summary.warehouseCode}&orderId=${summary.orderId}&quantity=${row.shortageQuantity}`}
-            >
-              이 품목만 발주
-            </Link>
+            <TourTarget tour="order.shortageLink">
+              <ShortageAction
+                to={`/inbound/new?itemCode=${row.itemCode}&warehouseCode=${summary.warehouseCode}&orderId=${summary.orderId}&quantity=${row.shortageQuantity}`}
+              >
+                이 품목만 발주
+                <Icon name="arrowRight" size={11} />
+              </ShortageAction>
+            </TourTarget>
           )}
         </StatusCell>
       ),
@@ -370,80 +375,82 @@ export const OrderDetailPage = () => {
         </RailColumn>
 
         <Main>
-          <PageHeader
-            title={summary.orderId}
-            description={
-              <Summary>
-                <Meta>
-                  <div>
-                    <dt>주문상태</dt>
-                    <dd>{summary.orderStatus}</dd>
-                  </div>
-                  <div>
-                    <dt>준비상태</dt>
-                    <dd>
-                      <StatusBadge descriptor={statusDescriptor} size="sm" />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>배송예정일</dt>
-                    <dd>
-                      {summary.deliveryLabel}{' '}
-                      {summary.overdue ? (
-                        <Overdue>{summary.dueLabel}</Overdue>
-                      ) : (
-                        <Muted>{summary.dueLabel}</Muted>
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>출고창고</dt>
-                    <dd>{summary.warehouseName}</dd>
-                  </div>
-                  <div>
-                    <dt>주문접수</dt>
-                    <dd>{summary.orderedAtLabel}</dd>
-                  </div>
-                </Meta>
-                {/*
+          <TourTarget tour="order.header">
+            <PageHeader
+              title={summary.orderId}
+              description={
+                <Summary>
+                  <Meta>
+                    <div>
+                      <dt>주문상태</dt>
+                      <dd>{summary.orderStatus}</dd>
+                    </div>
+                    <div>
+                      <dt>준비상태</dt>
+                      <dd>
+                        <StatusBadge descriptor={statusDescriptor} size="sm" />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>배송예정일</dt>
+                      <dd>
+                        {summary.deliveryLabel}{' '}
+                        {summary.overdue ? (
+                          <Overdue>{summary.dueLabel}</Overdue>
+                        ) : (
+                          <Muted>{summary.dueLabel}</Muted>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>출고창고</dt>
+                      <dd>{summary.warehouseName}</dd>
+                    </div>
+                    <div>
+                      <dt>주문접수</dt>
+                      <dd>{summary.orderedAtLabel}</dd>
+                    </div>
+                  </Meta>
+                  {/*
               배지만으로는 다음 행동을 알 수 없다 — 무엇을 기다리는지·무엇이 모자라는지.
               단 확인 필요 사유는 아래 패널이 그대로 띄우므로 여기서 반복하지 않는다.
             */}
-                {blocks.length === 0 && <Note>{detail}</Note>}
-              </Summary>
-            }
-            actions={
-              <Actions>
-                {/*
+                  {blocks.length === 0 && <Note>{detail}</Note>}
+                </Summary>
+              }
+              actions={
+                <Actions>
+                  {/*
                   머리말에는 되돌리는 액션만 둔다.
                   앞으로 가는 액션(예약 · 출고 · 발주)은 '다음 할 일' 줄이 하나만 낸다 —
                   같은 버튼을 두 자리에 두면 담당자가 둘을 다른 일로 읽고, 지금 눌러야
                   하는 것이 무엇인지가 다시 흐려진다.
                 */}
-                {dirty && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={requestDiscard}
-                    leftIcon={<Icon name="back" size={13} />}
-                  >
-                    입력 취소
-                  </Button>
-                )}
-                {actions.canRelease && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={release}
-                    leftIcon={<Icon name="unlock" size={13} />}
-                  >
-                    예약 해제
-                  </Button>
-                )}
-                {backToList}
-              </Actions>
-            }
-          />
+                  {dirty && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={requestDiscard}
+                      leftIcon={<Icon name="back" size={13} />}
+                    >
+                      입력 취소
+                    </Button>
+                  )}
+                  {actions.canRelease && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={release}
+                      leftIcon={<Icon name="unlock" size={13} />}
+                    >
+                      예약 해제
+                    </Button>
+                  )}
+                  {backToList}
+                </Actions>
+              }
+            />
+          </TourTarget>
 
           <Panel
             tone="plain"
@@ -470,7 +477,7 @@ export const OrderDetailPage = () => {
               description="자동으로 처리하지 않습니다. 재고를 바꾸지 않고, 발주도 만들지 않습니다."
               padded
             >
-              <Blocks>
+              <Blocks data-tour="order.blocks">
                 {blocks.map((block) => (
                   <li key={`${block.code}:${block.itemCode ?? ''}`}>
                     <span aria-hidden>⚠️</span>
@@ -486,12 +493,14 @@ export const OrderDetailPage = () => {
             title="주문 품목"
             description="06_주문에 적힌 그대로입니다. 세트는 아래 준비 품목에서 구성품으로 풀리고, 취소 품목과 서비스 항목은 준비 수량에서 빠집니다."
           >
-            <DataTable
-              columns={orderedColumns}
-              data={orderedRows}
-              rowKey={(row) => `${row.sequence}:${row.itemCode}`}
-              emptyTitle="주문 품목이 없습니다"
-            />
+            <TourTarget tour="order.orderedTable">
+              <DataTable
+                columns={orderedColumns}
+                data={orderedRows}
+                rowKey={(row) => `${row.sequence}:${row.itemCode}`}
+                emptyTitle="주문 품목이 없습니다"
+              />
+            </TourTarget>
           </Panel>
 
           <Panel
@@ -506,13 +515,15 @@ export const OrderDetailPage = () => {
               </>
             }
           >
-            <DataTable
-              columns={itemColumns}
-              data={itemRows}
-              rowKey={(row) => row.itemCode}
-              emptyTitle="준비할 품목이 없습니다"
-              emptyDescription="취소 품목이거나 서비스 항목만 있습니다."
-            />
+            <TourTarget tour="order.itemTable">
+              <DataTable
+                columns={itemColumns}
+                data={itemRows}
+                rowKey={(row) => row.itemCode}
+                emptyTitle="준비할 품목이 없습니다"
+                emptyDescription="취소 품목이거나 서비스 항목만 있습니다."
+              />
+            </TourTarget>
           </Panel>
 
           {serialRows.length > 0 && (
@@ -521,11 +532,13 @@ export const OrderDetailPage = () => {
               title="배정된 개체"
               description="예약과 함께 먼저 입고된 개체부터 배정했습니다. 다른 주문은 이 개체를 고를 수 없습니다."
             >
-              <DataTable
-                columns={serialColumns}
-                data={serialRows}
-                rowKey={(row) => row.serialNumber}
-              />
+              <TourTarget tour="order.serialTable">
+                <DataTable
+                  columns={serialColumns}
+                  data={serialRows}
+                  rowKey={(row) => row.serialNumber}
+                />
+              </TourTarget>
             </Panel>
           )}
 
@@ -535,11 +548,13 @@ export const OrderDetailPage = () => {
               title="입고예정"
               description="문서를 만든 것만으로 현재고는 늘지 않습니다. 입고해야 늘고, 생산품은 품질검사를 통과해야 입고할 수 있습니다."
             >
-              <DataTable
-                columns={incomingColumns}
-                data={incomingRows}
-                rowKey={(row) => row.documentId}
-              />
+              <TourTarget tour="order.incomingTable">
+                <DataTable
+                  columns={incomingColumns}
+                  data={incomingRows}
+                  rowKey={(row) => row.documentId}
+                />
+              </TourTarget>
             </Panel>
           )}
         </Main>

@@ -9,6 +9,7 @@ import { Select } from '@/components/common/Select'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { SummaryCards } from '@/components/common/SummaryCards'
 import { TextInput } from '@/components/common/TextInput'
+import { TourTarget } from '@/components/common/TourTarget'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FreshnessBar } from '@/features/audit'
 import type {
@@ -113,9 +114,11 @@ export const InventoryPage = () => {
           <span>{row.warehouseName}</span>
           {/* 사용 중지 창고의 재고는 출고 준비 대상이 아니다 — 숫자만 보고 세면 안 된다 */}
           {row.inactiveWarehouse && (
-            <Badge tone="neutral" variant="outline" size="sm">
-              사용 중지
-            </Badge>
+            <TourTarget tour="items.inactiveBadge">
+              <Badge tone="neutral" variant="outline" size="sm">
+                사용 중지
+              </Badge>
+            </TourTarget>
           )}
         </StackCell>
       ),
@@ -168,9 +171,11 @@ export const InventoryPage = () => {
 
         return (
           <SerialCell>
-            <Button variant="ghost" size="sm" onClick={() => openDetail(row)}>
-              보관 {row.storedSerialCount} · 배정 {row.assignedSerialCount}
-            </Button>
+            <TourTarget tour="items.serialButton">
+              <Button variant="ghost" size="sm" onClick={() => openDetail(row)}>
+                보관 {row.storedSerialCount} · 배정 {row.assignedSerialCount}
+              </Button>
+            </TourTarget>
             {row.serialMismatch && <Warning>현재고와 개체 수가 다릅니다</Warning>}
           </SerialCell>
         )
@@ -307,84 +312,90 @@ export const InventoryPage = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="제품"
-        description={
-          <>
-            가용재고 = 현재고 − 예약수량, 창고 총량 기준입니다. 주문 상세의 가용재고는 배송일이 앞선
-            주문이 가져간 몫을 뺀 나머지라 더 작을 수 있습니다.
-            <FreshnessBar freshness={freshness} />
-          </>
-        }
-      />
-
-      <SummaryCards items={summaryItems} label="재고 요약" />
-
-      <Panel
-        filter={
-          <>
-            <Select
-              aria-label="재고 상태"
-              options={levelOptions}
-              value={filter.level}
-              onChange={(event) => setFilter({ level: event.target.value as StockLevelFilter })}
-            />
-            <Select
-              aria-label="창고"
-              options={warehouseOptions}
-              value={filter.warehouseCode}
-              onChange={(event) => setFilter({ warehouseCode: event.target.value })}
-            />
-            <TextInput
-              aria-label="품목 검색"
-              placeholder="품목코드 또는 품목명"
-              value={filter.keyword}
-              onChange={(event) => setFilter({ keyword: event.target.value })}
-            />
-            {filtered && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilter}
-                leftIcon={<Icon name="reset" size={13} />}
-              >
-                필터 초기화
-              </Button>
-            )}
-            <FilterSpacer />
-            <ResultCount>
-              {filtered ? `${rows.length}건 / 전체 ${totalCount}건` : `전체 ${totalCount}건`}
-            </ResultCount>
-          </>
-        }
-      >
-        <DataTable
-          columns={columns}
-          data={rows}
-          rowKey={(row) => row.key}
-          rowTone={rowTone}
-          onRowClick={openDetail}
-          stickyHeader
-          emptyTitle={filtered ? '조건에 맞는 재고가 없습니다' : '재고가 없습니다'}
-          emptyDescription={
-            filtered
-              ? '필터를 바꾸거나 초기화해 보세요.'
-              : '04_재고현황에 행이 없고 확정된 입고예정도 없습니다.'
-          }
-          emptyAction={
-            filtered ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={resetFilter}
-                leftIcon={<Icon name="reset" size={13} />}
-              >
-                필터 초기화
-              </Button>
-            ) : undefined
+      <TourTarget tour="items.header">
+        <PageHeader
+          title="제품"
+          description={
+            <>
+              가용재고 = 현재고 − 예약수량, 창고 총량 기준입니다. 주문 상세의 가용재고는 배송일이
+              앞선 주문이 가져간 몫을 뺀 나머지라 더 작을 수 있습니다.
+              <FreshnessBar freshness={freshness} />
+            </>
           }
         />
-      </Panel>
+      </TourTarget>
+
+      <TourTarget tour="items.summary">
+        <SummaryCards items={summaryItems} label="재고 요약" />
+      </TourTarget>
+
+      <TourTarget tour="items.list">
+        <Panel
+          filter={
+            <>
+              <Select
+                aria-label="재고 상태"
+                options={levelOptions}
+                value={filter.level}
+                onChange={(event) => setFilter({ level: event.target.value as StockLevelFilter })}
+              />
+              <Select
+                aria-label="창고"
+                options={warehouseOptions}
+                value={filter.warehouseCode}
+                onChange={(event) => setFilter({ warehouseCode: event.target.value })}
+              />
+              <TextInput
+                aria-label="품목 검색"
+                placeholder="품목코드 또는 품목명"
+                value={filter.keyword}
+                onChange={(event) => setFilter({ keyword: event.target.value })}
+              />
+              {filtered && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilter}
+                  leftIcon={<Icon name="reset" size={13} />}
+                >
+                  필터 초기화
+                </Button>
+              )}
+              <FilterSpacer />
+              <ResultCount>
+                {filtered ? `${rows.length}건 / 전체 ${totalCount}건` : `전체 ${totalCount}건`}
+              </ResultCount>
+            </>
+          }
+        >
+          <DataTable
+            columns={columns}
+            data={rows}
+            rowKey={(row) => row.key}
+            rowTone={rowTone}
+            onRowClick={openDetail}
+            stickyHeader
+            emptyTitle={filtered ? '조건에 맞는 재고가 없습니다' : '재고가 없습니다'}
+            emptyDescription={
+              filtered
+                ? '필터를 바꾸거나 초기화해 보세요.'
+                : '04_재고현황에 행이 없고 확정된 입고예정도 없습니다.'
+            }
+            emptyAction={
+              filtered ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={resetFilter}
+                  leftIcon={<Icon name="reset" size={13} />}
+                >
+                  필터 초기화
+                </Button>
+              ) : undefined
+            }
+          />
+        </Panel>
+      </TourTarget>
 
       <Panel
         title="재고 이력"
@@ -418,7 +429,7 @@ export const InventoryPage = () => {
               재고 화면의 본질은 '믿을 수 있나' 이고, 그 답은 숫자를 나열하는 것이 아니라
               숫자끼리 맞아떨어지는 것을 보여주는 것이다.
             */}
-            <Identity data-testid="identity-available">
+            <Identity data-testid="identity-available" data-tour="items.drawer.identity">
               <dt>가용재고</dt>
               <dd>
                 <b>{drawer.row.availableQuantity}</b>
@@ -431,6 +442,7 @@ export const InventoryPage = () => {
             {drawer.row.serialManaged && (
               <Identity
                 data-testid="identity-serial"
+                data-tour="items.drawer.identitySerial"
                 $broken={drawer.row.serialMismatch}
                 aria-invalid={drawer.row.serialMismatch || undefined}
               >
@@ -460,12 +472,14 @@ export const InventoryPage = () => {
             )}
 
             <Panel tone="plain" title="개체 목록">
-              <DataTable
-                columns={serialColumns}
-                data={drawer.serials}
-                rowKey={(row) => row.serialNumber}
-                emptyTitle="등록된 개체가 없습니다"
-              />
+              <TourTarget tour="items.drawer.serials">
+                <DataTable
+                  columns={serialColumns}
+                  data={drawer.serials}
+                  rowKey={(row) => row.serialNumber}
+                  emptyTitle="등록된 개체가 없습니다"
+                />
+              </TourTarget>
             </Panel>
 
             <Panel
@@ -473,13 +487,15 @@ export const InventoryPage = () => {
               title="이 품목을 기다리는 주문"
               description="배정 순서가 빠른 주문이 재고를 먼저 가져갑니다. 주문번호를 누르면 주문 상세로 갑니다."
             >
-              <DataTable
-                columns={demandColumns}
-                data={drawer.demands}
-                rowKey={(row) => row.orderId}
-                emptyTitle="이 품목을 기다리는 주문이 없습니다"
-                emptyDescription="이 창고에서 나가는 준비 대상 주문 중 이 품목을 쓰는 주문이 없습니다."
-              />
+              <TourTarget tour="items.drawer.demands">
+                <DataTable
+                  columns={demandColumns}
+                  data={drawer.demands}
+                  rowKey={(row) => row.orderId}
+                  emptyTitle="이 품목을 기다리는 주문이 없습니다"
+                  emptyDescription="이 창고에서 나가는 준비 대상 주문 중 이 품목을 쓰는 주문이 없습니다."
+                />
+              </TourTarget>
             </Panel>
 
             <Panel
@@ -487,12 +503,14 @@ export const InventoryPage = () => {
               title="걸려 있는 발주 · 생산의뢰"
               description="문서를 만든 것만으로 현재고는 늘지 않습니다. 입고해야 늘어납니다."
             >
-              <DataTable
-                columns={documentColumns}
-                data={drawer.documents}
-                rowKey={(row) => row.documentId}
-                emptyTitle="걸려 있는 문서가 없습니다"
-              />
+              <TourTarget tour="items.drawer.documents">
+                <DataTable
+                  columns={documentColumns}
+                  data={drawer.documents}
+                  rowKey={(row) => row.documentId}
+                  emptyTitle="걸려 있는 문서가 없습니다"
+                />
+              </TourTarget>
             </Panel>
 
             <Panel
@@ -500,13 +518,15 @@ export const InventoryPage = () => {
               title="재고 이력"
               description="예약은 예약수량만, 출고는 현재고와 예약수량을 함께, 입고는 현재고만 움직입니다."
             >
-              <DataTable
-                columns={movementColumns}
-                data={drawer.movements}
-                rowKey={(row) => row.movementId}
-                emptyTitle="아직 이 품목의 재고가 움직인 적이 없습니다"
-                emptyDescription="예약 · 출고 · 입고를 처리하면 여기에 쌓입니다."
-              />
+              <TourTarget tour="items.drawer.movements">
+                <DataTable
+                  columns={movementColumns}
+                  data={drawer.movements}
+                  rowKey={(row) => row.movementId}
+                  emptyTitle="아직 이 품목의 재고가 움직인 적이 없습니다"
+                  emptyDescription="예약 · 출고 · 입고를 처리하면 여기에 쌓입니다."
+                />
+              </TourTarget>
             </Panel>
           </DrawerStack>
         )}

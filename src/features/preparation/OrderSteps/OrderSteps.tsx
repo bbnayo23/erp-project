@@ -25,7 +25,7 @@ export interface OrderStepsProps {
 export const OrderSteps = ({ steps, current, action, fallback }: OrderStepsProps) => {
   return (
     <div>
-      <Root aria-label="처리 단계">
+      <Root aria-label="처리 단계" data-tour="order.stepsBar">
         {steps.map((step, index) => (
           <Fragment key={step.key}>
             {index > 0 && (
@@ -44,7 +44,7 @@ export const OrderSteps = ({ steps, current, action, fallback }: OrderStepsProps
       </Root>
 
       {(current || fallback) && (
-        <Next>
+        <Next data-tour="order.nextAction">
           <NextText>
             <NextLabel>{current ? `다음 할 일 — ${current.label}` : fallback}</NextLabel>
             {current?.hint && <NextHint>{current.hint}</NextHint>}

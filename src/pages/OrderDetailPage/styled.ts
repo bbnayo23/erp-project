@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import styled from 'styled-components'
 import { pageEnter } from '@/styles/animations'
 
@@ -76,6 +77,27 @@ export const StatusCell = styled.div`
 export const Note = styled.span`
   font-size: ${({ theme }) => theme.font.size.sm};
   color: ${({ theme }) => theme.colors.textMuted};
+`
+
+/**
+ * 부족 품목에서 발주 생성으로 가는 링크.
+ *
+ * 일반 링크(가늘고, 밑줄 없이 파란 글자)로 두면 배지 · 사유 글 사이에 묻혀 이 행에서
+ * 유일하게 눌러야 하는 자리라는 것이 안 보인다. SummaryCards 의 행동 줄과 같은
+ * 패턴(굵게 + 화살표)으로 세워 이 칸에서 가장 먼저 읽히게 한다.
+ */
+export const ShortageAction = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+
+  font-size: ${({ theme }) => theme.font.size.sm};
+  font-weight: ${({ theme }) => theme.font.weight.semibold};
+  color: ${({ theme }) => theme.colors.textLink};
+
+  &:hover {
+    text-decoration: underline;
+  }
 `
 
 /** 입고 수량 입력 + 버튼을 한 줄에 */

@@ -96,7 +96,7 @@ export const ReceiveModal = ({
       title={production ? '검사 및 입고' : '입고 처리'}
       description={`${row.documentId} · ${row.itemName}`}
       footer={
-        <Row>
+        <Row data-tour="receive.submit">
           <Button variant="secondary" size="sm" onClick={onClose}>
             취소
           </Button>
@@ -113,7 +113,7 @@ export const ReceiveModal = ({
       }
     >
       <Body>
-        <Facts>
+        <Facts data-tour="receive.facts">
           <div>
             <dt>입고창고</dt>
             <dd>{row.warehouseName}</dd>
@@ -133,7 +133,7 @@ export const ReceiveModal = ({
         </Facts>
 
         {production && (
-          <Section>
+          <Section data-tour="receive.inspection">
             <StepTitle>① 품질검사 결과</StepTitle>
             <StepHint>
               합격한 수량만 현재고가 됩니다. 불합격 수량만큼 계획수량이 줄어 앞으로도 들어오지
@@ -163,7 +163,7 @@ export const ReceiveModal = ({
           </Section>
         )}
 
-        <Section>
+        <Section data-tour="receive.receiving">
           <StepTitle>{production ? '② 입고' : '입고 수량'}</StepTitle>
           {production ? (
             <StepHint>합격수량 {receiving}개가 입고됩니다.</StepHint>

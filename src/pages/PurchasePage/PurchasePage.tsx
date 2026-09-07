@@ -7,6 +7,7 @@ import { Select } from '@/components/common/Select'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { SummaryCards } from '@/components/common/SummaryCards'
 import { TextInput } from '@/components/common/TextInput'
+import { TourTarget } from '@/components/common/TourTarget'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FreshnessBar } from '@/features/audit'
 import { ReceiveModal } from '@/features/purchase/ReceiveModal'
@@ -263,99 +264,105 @@ export const PurchasePage = () => {
 
       <SummaryCards items={summaryItems} label="입고예정 단계 요약" />
 
-      <Panel
-        filter={
-          <>
-            <Select
-              aria-label="단계"
-              options={stageOptions}
-              value={filter.stage}
-              onChange={(event) => setFilter({ stage: event.target.value as PurchaseStageFilter })}
-            />
-            <Select
-              aria-label="문서구분"
-              options={documentTypeOptions}
-              value={filter.documentType}
-              onChange={(event) =>
-                setFilter({ documentType: event.target.value as DocumentTypeFilter })
-              }
-            />
-            <Select
-              aria-label="입고창고"
-              options={warehouseOptions}
-              value={filter.warehouseCode}
-              onChange={(event) => setFilter({ warehouseCode: event.target.value })}
-            />
-            <TextInput
-              aria-label="문서번호·품목 검색"
-              placeholder="문서번호 또는 품목"
-              value={filter.keyword}
-              onChange={(event) => setFilter({ keyword: event.target.value })}
-            />
-            {filtered && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilter}
-                leftIcon={<Icon name="reset" size={13} />}
-              >
-                필터 초기화
-              </Button>
-            )}
-            <FilterSpacer />
-            <ResultCount>
-              {filtered ? `${rows.length}건 / 전체 ${totalCount}건` : `전체 ${totalCount}건`}
-            </ResultCount>
-          </>
-        }
-      >
-        <DataTable
-          columns={columns}
-          data={rows}
-          rowKey={(row) => row.documentId}
-          rowTone={rowTone}
-          stickyHeader
-          emptyTitle={filtered ? '조건에 맞는 문서가 없습니다' : '입고예정 문서가 없습니다'}
-          emptyDescription={
-            filtered
-              ? '필터를 바꾸거나 초기화해 보세요.'
-              : '부족분 발주는 배송 준비 현황의 주문 상세에서 만듭니다 — 같은 품목을 기다리는 주문의 몫까지 한 번에 나가야 하기 때문입니다.'
-          }
-          emptyAction={
-            filtered ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={resetFilter}
-                leftIcon={<Icon name="reset" size={13} />}
-              >
-                필터 초기화
-              </Button>
-            ) : (
-              <Link to="/orders">
-                <Button variant="secondary" size="sm">
-                  배송 준비 현황으로
+      <TourTarget tour="purchase.list">
+        <Panel
+          filter={
+            <>
+              <Select
+                aria-label="단계"
+                options={stageOptions}
+                value={filter.stage}
+                onChange={(event) =>
+                  setFilter({ stage: event.target.value as PurchaseStageFilter })
+                }
+              />
+              <Select
+                aria-label="문서구분"
+                options={documentTypeOptions}
+                value={filter.documentType}
+                onChange={(event) =>
+                  setFilter({ documentType: event.target.value as DocumentTypeFilter })
+                }
+              />
+              <Select
+                aria-label="입고창고"
+                options={warehouseOptions}
+                value={filter.warehouseCode}
+                onChange={(event) => setFilter({ warehouseCode: event.target.value })}
+              />
+              <TextInput
+                aria-label="문서번호·품목 검색"
+                placeholder="문서번호 또는 품목"
+                value={filter.keyword}
+                onChange={(event) => setFilter({ keyword: event.target.value })}
+              />
+              {filtered && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilter}
+                  leftIcon={<Icon name="reset" size={13} />}
+                >
+                  필터 초기화
                 </Button>
-              </Link>
-            )
+              )}
+              <FilterSpacer />
+              <ResultCount>
+                {filtered ? `${rows.length}건 / 전체 ${totalCount}건` : `전체 ${totalCount}건`}
+              </ResultCount>
+            </>
           }
-        />
-      </Panel>
+        >
+          <DataTable
+            columns={columns}
+            data={rows}
+            rowKey={(row) => row.documentId}
+            rowTone={rowTone}
+            stickyHeader
+            emptyTitle={filtered ? '조건에 맞는 문서가 없습니다' : '입고예정 문서가 없습니다'}
+            emptyDescription={
+              filtered
+                ? '필터를 바꾸거나 초기화해 보세요.'
+                : '부족분 발주는 배송 준비 현황의 주문 상세에서 만듭니다 — 같은 품목을 기다리는 주문의 몫까지 한 번에 나가야 하기 때문입니다.'
+            }
+            emptyAction={
+              filtered ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={resetFilter}
+                  leftIcon={<Icon name="reset" size={13} />}
+                >
+                  필터 초기화
+                </Button>
+              ) : (
+                <Link to="/orders">
+                  <Button variant="secondary" size="sm">
+                    배송 준비 현황으로
+                  </Button>
+                </Link>
+              )
+            }
+          />
+        </Panel>
+      </TourTarget>
 
-      <Panel
-        title="입고 이력"
-        description="입고한 수량만큼 현재고가 늘었는지, 그 물건을 기다리던 주문이 풀렸는지 확인합니다. 준비상태는 지금 다시 판정한 값입니다. 같은 입고 요청을 두 번 보내도 한 줄만 쌓입니다."
-      >
-        <DataTable
-          columns={historyColumns}
-          data={history}
-          rowKey={(row) => row.movementId}
-          stickyHeader
-          maxHeight="320px"
-          emptyTitle="아직 입고한 문서가 없습니다"
-          emptyDescription="입고를 처리하면 현재고가 얼마나 늘었고 어느 주문이 풀렸는지 여기에 쌓입니다."
-        />
-      </Panel>
+      <TourTarget tour="purchase.history">
+        <Panel
+          title="입고 이력"
+          description="입고한 수량만큼 현재고가 늘었는지, 그 물건을 기다리던 주문이 풀렸는지 확인합니다. 준비상태는 지금 다시 판정한 값입니다. 같은 입고 요청을 두 번 보내도 한 줄만 쌓입니다."
+        >
+          <DataTable
+            columns={historyColumns}
+            data={history}
+            rowKey={(row) => row.movementId}
+            stickyHeader
+            maxHeight="320px"
+            emptyTitle="아직 입고한 문서가 없습니다"
+            emptyDescription="입고를 처리하면 현재고가 얼마나 늘었고 어느 주문이 풀렸는지 여기에 쌓입니다."
+          />
+        </Panel>
+      </TourTarget>
 
       <ReceiveModal
         key={openDocument?.documentId}

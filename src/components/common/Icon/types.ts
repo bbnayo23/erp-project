@@ -29,6 +29,8 @@ export type IconName =
   | 'unlock'
   /** 되돌아간다 — 목록으로 · 입력 취소 */
   | 'back'
+  /** 발표 가이드 — 화면을 짚어가며 순서대로 설명한다 */
+  | 'guide'
 
 export interface IconProps {
   name: IconName

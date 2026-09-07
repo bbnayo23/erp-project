@@ -213,6 +213,8 @@ export const zIndex = {
   popover: 600,
   toast: 700,
   tooltip: 800,
+  /** 발표 가이드 — 모달 위에서도 짚을 수 있어야 한다 */
+  guide: 900,
 } as const
 
 export const breakpoint = {

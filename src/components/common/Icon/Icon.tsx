@@ -27,6 +27,7 @@ const PATHS: Record<IconName, string> = {
   lock: 'M6 11h12v9H6v-9Zm2.5 0V7.5a3.5 3.5 0 1 1 7 0V11',
   unlock: 'M6 11h12v9H6v-9Zm2.5 0V7.5a3.5 3.5 0 0 1 6.9-.9',
   back: 'M19 12H5m0 0 6-6m-6 6 6 6',
+  guide: 'M6 3v18M6 4h11l-3 4 3 4H6Z',
 }
 
 /**
@@ -47,6 +48,7 @@ const STROKED = new Set<IconName>([
   'lock',
   'unlock',
   'back',
+  'guide',
 ])
 
 export const Icon = ({ name, size = 18, className }: IconProps) => {

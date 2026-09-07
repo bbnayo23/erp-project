@@ -5,9 +5,10 @@ import { Icon } from '@/components/common/Icon'
 import { Panel } from '@/components/common/Panel'
 import { Select } from '@/components/common/Select'
 import { TextInput } from '@/components/common/TextInput'
+import { TourTarget } from '@/components/common/TourTarget'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useIssuePage } from './hooks'
-import { Actions, Facts, Field, Fixed, Form, Layout, Notice, Problem } from './styled'
+import { Actions, Facts, Field, Fields, Fixed, Form, Layout, Notice, Problem } from './styled'
 
 /**
  * 발주 생성 (`/inbound/new`).
@@ -46,15 +47,17 @@ export const IssuePage = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="발주 생성"
-        description={
-          context.sourceOrderId
-            ? `${context.sourceOrderId} 의 부족분에서 넘어왔습니다.`
-            : '부족한 품목을 채웁니다.'
-        }
-        actions={back}
-      />
+      <TourTarget tour="issue.header">
+        <PageHeader
+          title="발주 생성"
+          description={
+            context.sourceOrderId
+              ? `${context.sourceOrderId} 의 부족분에서 넘어왔습니다.`
+              : '부족한 품목을 채웁니다.'
+          }
+          actions={back}
+        />
+      </TourTarget>
 
       <Panel title="발주 내용" padded>
         <Form
@@ -64,7 +67,7 @@ export const IssuePage = () => {
           }}
         >
           {/* 규칙이 정한 값 — 담당자가 바꿀 수 없다 */}
-          <Facts>
+          <Facts data-tour="issue.facts">
             <div>
               <dt>품목</dt>
               <dd>
@@ -90,37 +93,39 @@ export const IssuePage = () => {
             </div>
           </Facts>
 
-          <Field>
-            <span>수량</span>
-            <TextInput
-              numeric
-              aria-label="발주 수량"
-              value={draft.quantity}
-              onChange={(event) => setDraft({ quantity: event.target.value })}
-            />
-            {context.shortageQuantity > 0 && <Fixed>부족수량 {context.shortageQuantity}개</Fixed>}
-          </Field>
+          <Fields data-tour="issue.fields">
+            <Field>
+              <span>수량</span>
+              <TextInput
+                numeric
+                aria-label="발주 수량"
+                value={draft.quantity}
+                onChange={(event) => setDraft({ quantity: event.target.value })}
+              />
+              {context.shortageQuantity > 0 && <Fixed>부족수량 {context.shortageQuantity}개</Fixed>}
+            </Field>
 
-          <Field>
-            <span>공급처</span>
-            <Select
-              aria-label="공급처"
-              options={supplierOptions}
-              value={draft.supplierCode}
-              onChange={(event) => setDraft({ supplierCode: event.target.value })}
-            />
-          </Field>
+            <Field>
+              <span>공급처</span>
+              <Select
+                aria-label="공급처"
+                options={supplierOptions}
+                value={draft.supplierCode}
+                onChange={(event) => setDraft({ supplierCode: event.target.value })}
+              />
+            </Field>
 
-          <Field>
-            <span>사용가능예정일</span>
-            <TextInput
-              type="date"
-              aria-label="사용가능예정일"
-              value={draft.availableDate}
-              onChange={(event) => setDraft({ availableDate: event.target.value })}
-            />
-            <Fixed>기준시각 + 리드타임</Fixed>
-          </Field>
+            <Field>
+              <span>사용가능예정일</span>
+              <TextInput
+                type="date"
+                aria-label="사용가능예정일"
+                value={draft.availableDate}
+                onChange={(event) => setDraft({ availableDate: event.target.value })}
+              />
+              <Fixed>기준시각 + 리드타임</Fixed>
+            </Field>
+          </Fields>
 
           <Checkbox
             label="생성 즉시 발주 확정"
@@ -129,11 +134,13 @@ export const IssuePage = () => {
           />
           <Fixed>확정해야 판정에 쓰여 이 주문이 대기로 바뀝니다.</Fixed>
 
-          <Notice>발주를 생성해도 현재고는 늘지 않습니다. 입고 처리를 해야 늘어납니다.</Notice>
+          <Notice data-tour="issue.notice">
+            발주를 생성해도 현재고는 늘지 않습니다. 입고 처리를 해야 늘어납니다.
+          </Notice>
 
           {invalid && <Problem role="alert">{invalid}</Problem>}
 
-          <Actions>
+          <Actions data-tour="issue.submit">
             {back}
             <Button
               type="submit"

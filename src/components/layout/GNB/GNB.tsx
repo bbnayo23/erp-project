@@ -2,6 +2,7 @@ import { useThemeMode } from '@/app/providers'
 import { Badge } from '@/components/common/Badge'
 import { Button, IconButton } from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
+import { useGuideStore } from '@/features/presentationGuide'
 import { useErpStore } from '@/store/erpStore'
 import { NAVIGATION } from './constants'
 import { Bar, Brand, BrandName, Item, Logo, Nav, Right } from './styled'
@@ -9,6 +10,7 @@ import { Bar, Brand, BrandName, Item, Logo, Nav, Right } from './styled'
 export const GNB = () => {
   const { mode, toggleMode } = useThemeMode()
   const reset = useErpStore((state) => state.reset)
+  const openGuide = useGuideStore((state) => state.open)
 
   return (
     <Bar>
@@ -31,6 +33,14 @@ export const GNB = () => {
         <Badge tone="warning" variant="subtle" size="sm">
           IN-MEMORY
         </Badge>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Icon name="guide" size={13} />}
+          onClick={openGuide}
+        >
+          발표 가이드
+        </Button>
         {/* 백엔드가 없어 새로고침해도 localStorage 에 남는다 — 시드 상태로 되돌리는 길이 필요하다 */}
         <Button
           variant="secondary"
