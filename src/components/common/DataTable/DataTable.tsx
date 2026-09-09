@@ -19,6 +19,7 @@ export const DataTable = <T,>({
   emptyAction,
   onRowClick,
   rowTone,
+  rowTour,
   selectedKeys,
   stickyHeader = false,
   maxHeight,
@@ -41,6 +42,7 @@ export const DataTable = <T,>({
         $clickable={Boolean(activate)}
         $selected={selectedKeys?.has(key) ?? false}
         $tone={rowTone?.(row, index)}
+        data-tour={rowTour?.(row, index)}
         onClick={activate}
         /*
          * 행이 상세로 가는 유일한 길인 화면이 있어 마우스 없이도 닿아야 한다.

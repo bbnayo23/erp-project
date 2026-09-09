@@ -180,6 +180,26 @@ export const rowToneOf = (row: IncomingRow): RowTone =>
   row.overdue ? 'danger' : PURCHASE_STAGE[row.stage].tone
 
 /**
+ * 발표 가이드가 이 행을 집을 이름들.
+ *
+ * 26줄짜리 목록에서 "이 문서를 보세요" 를 표 전체 강조로는 말할 수 없다. 그래서 행마다
+ * 성격을 이름으로 남겨 가이드가 그 줄들만 짚을 수 있게 한다.
+ *
+ * 새로 판정하지 않는다 — 단계와 출처 주문은 이미 이 행이 배지와 주석으로 보여주는
+ * 값이다. 가이드가 다시 계산하면 화면에 보이는 배지와 강조되는 줄이 갈릴 수 있다.
+ */
+export const rowTourOf = (row: IncomingRow): string =>
+  [
+    'purchase.row',
+    `purchase.row.${row.stage.toLowerCase()}`,
+    // 이번 발표에서 방금 만들어진 문서 — 출처 주문이 붙은 것이 그 표식이다
+    row.relatedOrderId ? 'purchase.row.related' : '',
+    row.overdue ? 'purchase.row.overdue' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+/**
  * 요약 카드.
  *
  * 세는 대상은 필터 이전의 전체다. 필터를 걸 때마다 요약이 같이 움직이면 지금 걸린

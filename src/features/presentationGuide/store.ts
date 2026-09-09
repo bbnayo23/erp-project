@@ -5,6 +5,14 @@ import { GUIDE_STEPS } from './steps'
 interface GuideState {
   isOpen: boolean
   index: number
+  /**
+   * 결과 화면에 필요한 처리를 가이드가 대신 실행할지.
+   *
+   * 끄는 길을 둔 이유: 발주와 입고를 직접 눌러 보이려는 발표자에게는 가이드가 먼저
+   * 처리해 버리는 것이 방해다. 그리고 이 처리는 되돌아갈 때 시드로 초기화하므로,
+   * 손으로 만들어 둔 상태를 지키고 싶을 때 막을 수단이 있어야 한다.
+   */
+  autoDemo: boolean
   /** 닫혔던 자리에서 이어본다 — 처음으로 되돌리는 것은 restart 뿐이다 */
   open: () => void
   close: () => void
@@ -12,13 +20,14 @@ interface GuideState {
   prev: () => void
   goTo: (index: number) => void
   restart: () => void
+  toggleAutoDemo: () => void
 }
 
 const clamp = (index: number) => Math.min(Math.max(index, 0), GUIDE_STEPS.length - 1)
 
 /** localStorage 키. 스텝 구성이 바뀌면 STORAGE_VERSION 을 올려 옛 인덱스를 버린다. */
 const STORAGE_KEY = 'erp-project/guide'
-const STORAGE_VERSION = 1
+const STORAGE_VERSION = 2
 
 /** 테스트(node 환경)에는 localStorage 가 없다 — erpStore 와 같은 대체 저장소를 쓴다 */
 const memoryStorage = ((): StateStorage => {
@@ -51,12 +60,14 @@ export const useGuideStore = create<GuideState>()(
     (set) => ({
       isOpen: false,
       index: 0,
+      autoDemo: true,
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
       next: () => set((state) => ({ index: clamp(state.index + 1) })),
       prev: () => set((state) => ({ index: clamp(state.index - 1) })),
       goTo: (index) => set({ index: clamp(index) }),
       restart: () => set({ index: 0 }),
+      toggleAutoDemo: () => set((state) => ({ autoDemo: !state.autoDemo })),
     }),
     {
       name: STORAGE_KEY,
@@ -64,7 +75,7 @@ export const useGuideStore = create<GuideState>()(
       storage: createJSONStorage(stateStorage),
       // isOpen 은 저장하지 않는다 — 다른 일로 새로고침했을 뿐인데 가이드가 저절로
       // 다시 뜨면 그게 더 당황스럽다. "발표 가이드" 버튼을 다시 눌러야 연다.
-      partialize: (state) => ({ index: state.index }),
+      partialize: (state) => ({ index: state.index, autoDemo: state.autoDemo }),
     },
   ),
 )

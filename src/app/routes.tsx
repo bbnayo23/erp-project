@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { IssuePage } from '@/pages/IssuePage'
@@ -13,7 +13,12 @@ import { PurchasePage } from '@/pages/PurchasePage'
  * 출발한다. 주문 화면의 준비상태도, 발주 화면의 부족수량도 전부 그 숫자에서 나온 결과다.
  * 결과부터 보여주면 담당자는 그 숫자를 믿을 근거를 화면에서 찾지 못한다.
  */
-export const router = createBrowserRouter([
+/**
+ * 라우트 정의. `router` 와 분리해 둔 이유는 테스트다 — 브라우저 라우터는 jsdom 에서
+ * 세울 수 없어(내부적으로 fetch 를 쓴다) 화면 테스트가 메모리 라우터로 같은 정의를
+ * 세운다. 두 곳에 route 를 각자 적으면 한쪽만 고쳐도 테스트가 조용히 지나간다.
+ */
+export const ROUTES: RouteObject[] = [
   {
     path: '/',
     element: <AppLayout />,
@@ -32,4 +37,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/items" replace /> },
     ],
   },
-])
+]
+
+export const router = createBrowserRouter(ROUTES)

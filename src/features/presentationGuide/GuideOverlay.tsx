@@ -3,10 +3,29 @@ import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button, IconButton } from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
+import { applyDemoStage, DEMO_STAGE_LABEL, pendingDemoStages, type DemoStage } from './demo'
 import { useGuideStore } from './store'
 import { GUIDE_STEPS } from './steps'
 import type { GuideStep } from './types'
-import { Body, Dim, Dock, Eyebrow, Footer, Hint, Nav, Progress, Ring, Root, Title } from './styled'
+import {
+  Applied,
+  AppliedLabel,
+  Body,
+  Dim,
+  Dock,
+  DockActions,
+  Eyebrow,
+  Footer,
+  Hint,
+  Mark,
+  MarkOrder,
+  Nav,
+  Press,
+  Progress,
+  Ring,
+  Root,
+  Title,
+} from './styled'
 
 interface Rect {
   top: number
@@ -19,6 +38,13 @@ interface Rect {
 const DOCK_HEIGHT_FALLBACK = 180
 /** 독과 강조 대상 사이에 남겨야 할 최소 여백 */
 const CLEARANCE = 24
+/**
+ * 강조를 보여준 뒤 처리를 실행하기까지의 간격.
+ *
+ * 스텝에 들어온 즉시 처리하면 화면이 이미 바뀐 상태로 나타나, 무엇을 눌러서 바뀐
+ * 것인지 볼 기회가 없다. 강조 → 클릭 표시 → 결과 순으로 한 박자를 준다.
+ */
+const PRESS_DELAY = 620
 
 /**
  * 대상을 담고 있는 스크롤 컨테이너를 찾는다.
@@ -56,12 +82,20 @@ export const GuideOverlay = () => {
   const next = useGuideStore((state) => state.next)
   const prev = useGuideStore((state) => state.prev)
   const restart = useGuideStore((state) => state.restart)
+  const autoDemo = useGuideStore((state) => state.autoDemo)
+  const toggleAutoDemo = useGuideStore((state) => state.toggleAutoDemo)
 
   const navigate = useNavigate()
   const location = useLocation()
 
+  /** 딤을 뚫는 구멍 — 대상이 여럿이면 그것들을 모두 감싸는 사각형 */
   const [rect, setRect] = useState<Rect | null>(null)
+  /** 짚어야 할 줄이 여럿일 때 각 줄의 자리. 하나뿐이면 비어 있다(링이 곧 그 줄이다). */
+  const [marks, setMarks] = useState<Rect[]>([])
   const scrolledStepId = useRef<string | null>(null)
+
+  /** 이 스텝에서 가이드가 대신 처리한 단계들. 비어 있으면 화면이 바뀌지 않았다는 뜻이다. */
+  const [applied, setApplied] = useState<DemoStage[]>([])
 
   // 하단 여백을 넓혀 둔 스크롤 컨테이너들 — 가이드가 닫히면 원래대로 되돌린다
   const paddedScrollParentsRef = useRef<Set<HTMLElement>>(new Set())
@@ -101,6 +135,50 @@ export const GuideOverlay = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, step.id])
 
+  /*
+   * 이 스텝의 화면이 성립하는 상태를 만든다.
+   *
+   * 결과를 보여주는 화면(입고 이력 · 배정된 개체 · 출고 완료)은 앞 처리가 끝나 있어야
+   * 숫자가 찍힌다. 발표자가 매번 손으로 처리하지 않아도 되도록, 스텝이 선언한 단계까지
+   * 스토어 액션으로 맞춘다 — 화면의 버튼이 부르는 것과 같은 액션이라 규칙을 우회하지 않는다.
+   *
+   * 강조가 버튼인 스텝(`press`)은 한 박자 늦춘다. 강조 → 클릭 표시 → 결과 순서로 보여야
+   * 화면이 왜 바뀌었는지 청중이 볼 수 있다.
+   */
+  useEffect(() => {
+    if (!isOpen) return
+    const stage = step.demo
+
+    let pressTimer: number | undefined
+
+    // 측정과 같은 이유로 다음 매크로태스크로 미룬다 — 이펙트 본문에서 곧바로 setState 를
+    // 부르면 같은 커밋 안에서 다시 렌더가 걸린다.
+    const start = window.setTimeout(() => {
+      // 시연이 없는 스텝에서도 반드시 비운다 — 앞 스텝의 "대신 처리" 줄이 남으면
+      // 방금 아무 일도 없었는데 처리가 있었던 것처럼 읽힌다.
+      if (!stage || !autoDemo) {
+        setApplied([])
+        return
+      }
+
+      const stages = pendingDemoStages(stage)
+      setApplied(stages)
+      if (stages.length === 0) return
+
+      if (!step.press) {
+        applyDemoStage(stage)
+        return
+      }
+      pressTimer = window.setTimeout(() => applyDemoStage(stage), PRESS_DELAY)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(start)
+      if (pressTimer !== undefined) window.clearTimeout(pressTimer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, step.id, autoDemo])
+
   // 대상을 찾아 자리를 잰다. 라우팅 뒤 렌더가 끝나기까지, 그리고 라이브 조작으로 값이
   // 바뀌는 동안에도 계속 다시 재야 하므로 열려 있는 동안 주기적으로 반복한다.
   useEffect(() => {
@@ -109,15 +187,49 @@ export const GuideOverlay = () => {
     const measure = () => {
       if (!step.selector) {
         setRect(null)
+        setMarks([])
         return
       }
-      const el = document.querySelector<HTMLElement>(`[data-tour="${step.selector}"]`)
-      if (!el) {
+
+      /*
+       * `~=` 로 찾는다. 표의 행은 성격이 여럿일 수 있어(`purchase.row purchase.row.draft`)
+       * 앵커에 이름을 공백으로 여러 개 붙인다 — 토큰 하나만 맞아도 집힌다. 값이 하나뿐인
+       * 기존 앵커는 그대로 걸린다.
+       *
+       * 여러 개가 걸리는 스텝이 있다. '봐야 하는 문서 3건' 처럼 목록의 일부를 짚는
+       * 자리다 — 표 전체를 강조하면 어느 줄을 보라는 것인지 말하지 못한다.
+       */
+      const found = [
+        ...document.querySelectorAll<HTMLElement>(`[data-tour~="${step.selector}"]`),
+      ]
+      if (found.length === 0) {
         setRect(null)
+        setMarks([])
         return
       }
-      const box = el.getBoundingClientRect()
-      setRect({ top: box.top, left: box.left, width: box.width, height: box.height })
+
+      const boxes = found.map((node) => node.getBoundingClientRect())
+      const el = found[0] as HTMLElement
+
+      // 딤을 뚫는 구멍은 하나다 — 여러 줄을 짚을 때는 그것들을 모두 감싸는 사각형을 쓴다
+      const box = {
+        top: Math.min(...boxes.map((b) => b.top)),
+        left: Math.min(...boxes.map((b) => b.left)),
+        right: Math.max(...boxes.map((b) => b.right)),
+        bottom: Math.max(...boxes.map((b) => b.bottom)),
+      }
+
+      setRect({
+        top: box.top,
+        left: box.left,
+        width: box.right - box.left,
+        height: box.bottom - box.top,
+      })
+      setMarks(
+        found.length > 1
+          ? boxes.map((b) => ({ top: b.top, left: b.left, width: b.width, height: b.height }))
+          : [],
+      )
 
       /*
        * 독은 항상 하단에 그대로 둔다. 대상을 가리지 않는 몫은 스크롤이 진다 —
@@ -204,6 +316,9 @@ export const GuideOverlay = () => {
   const slideSteps = GUIDE_STEPS.filter((candidate) => candidate.slide === step.slide)
   const slidePosition = slideSteps.indexOf(step) + 1
 
+  /** 클릭 표시는 누를 자리가 실제로 있고, 그 클릭으로 화면이 바뀔 때만 띄운다 */
+  const pressing = Boolean(step.press) && applied.length > 0 && rect !== null
+
   return createPortal(
     <Root>
       {rect ? (
@@ -219,12 +334,46 @@ export const GuideOverlay = () => {
         <Dim />
       )}
 
+      {marks.map((mark, order) => (
+        <Mark
+          key={`${step.id}-${order}`}
+          $order={order}
+          aria-hidden
+          data-testid="guide-mark"
+          style={{ top: mark.top, left: mark.left, width: mark.width, height: mark.height }}
+        >
+          <MarkOrder>{order + 1}</MarkOrder>
+        </Mark>
+      ))}
+
+      {pressing && rect && (
+        // key 를 스텝으로 두면 스텝이 바뀔 때마다 요소가 새로 붙어 애니메이션이 다시 돈다
+        <Press
+          key={step.id}
+          aria-hidden
+          data-testid="guide-press"
+          style={{ top: rect.top + rect.height / 2, left: rect.left + rect.width / 2 }}
+        />
+      )}
+
       <Dock ref={setDockNode} role="dialog" aria-label="발표 가이드">
         <Eyebrow>
           <Progress>
             {step.slide}/16 · {step.slideLabel} ({slidePosition}/{slideSteps.length})
+            {/* 몇 줄을 짚고 있는지 — 화면 밖으로 밀린 줄이 있어도 개수는 여기서 읽힌다 */}
+            {marks.length > 1 && ` · 볼 곳 ${marks.length}`}
           </Progress>
-          <Nav>
+          <DockActions>
+            {/* 발주 · 입고를 직접 눌러 보이려는 발표자에게는 가이드가 먼저 처리하는 것이 방해다 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-pressed={autoDemo}
+              onClick={toggleAutoDemo}
+              title="결과 화면에 필요한 처리를 가이드가 대신 실행합니다"
+            >
+              {autoDemo ? '자동 시연 끄기' : '자동 시연 켜기'}
+            </Button>
             {/* 닫았던 자리에서 다시 여는 것이 기본이라, 처음으로 되돌리는 길을 따로 둔다 */}
             {!isFirst && (
               <Button variant="ghost" size="sm" onClick={restart}>
@@ -234,11 +383,21 @@ export const GuideOverlay = () => {
             <IconButton aria-label="가이드 닫기" size="sm" variant="ghost" onClick={close}>
               <Icon name="close" />
             </IconButton>
-          </Nav>
+          </DockActions>
         </Eyebrow>
 
         <Title>{step.title}</Title>
         <Body>{step.body}</Body>
+
+        {applied.length > 0 && (
+          <Applied role="status">
+            <AppliedLabel>
+              <Icon name="guide" size={13} />
+              가이드가 대신 처리
+            </AppliedLabel>
+            {applied.map((stage) => DEMO_STAGE_LABEL[stage]).join(' → ')}
+          </Applied>
+        )}
 
         <Footer>
           <Nav>

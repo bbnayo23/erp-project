@@ -11,6 +11,7 @@ import { TourTarget } from '@/components/common/TourTarget'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FreshnessBar } from '@/features/audit'
 import { ReceiveModal } from '@/features/purchase/ReceiveModal'
+import { rowTourOf } from '@/features/purchase/utils'
 import type {
   DocumentTypeFilter,
   IncomingRow,
@@ -318,6 +319,7 @@ export const PurchasePage = () => {
             data={rows}
             rowKey={(row) => row.documentId}
             rowTone={rowTone}
+            rowTour={rowTourOf}
             stickyHeader
             emptyTitle={filtered ? '조건에 맞는 문서가 없습니다' : '입고예정 문서가 없습니다'}
             emptyDescription={

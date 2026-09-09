@@ -52,6 +52,16 @@ export interface DataTableProps<T> {
    * 훑을 때 담당자는 글자를 읽지 않고 색으로 먼저 걸러낸다.
    */
   rowTone?: (row: T, index: number) => RowTone | undefined
+  /**
+   * 행에 붙일 발표 가이드 앵커 — `data-tour` 값이 된다.
+   *
+   * 공백으로 여러 개를 넘길 수 있다. 한 행이 '새로 만든 문서' 이면서 '검사 대기' 일 수
+   * 있어서다. 가이드는 `[data-tour~="값"]` 으로 찾으므로 토큰 하나만 맞아도 집힌다.
+   *
+   * 이 표가 가이드를 아는 것이 아니라, 어느 행이 어떤 성격인지는 이미 표가 배지와
+   * 레일로 말하고 있다 — 같은 판정을 이름으로 한 번 더 내놓는 것뿐이다.
+   */
+  rowTour?: (row: T, index: number) => string | undefined
   /** 현재 선택된 row key 집합 — 하이라이트에만 사용 */
   selectedKeys?: ReadonlySet<string>
   /**

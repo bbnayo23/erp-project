@@ -24,4 +24,9 @@ export const TEST_ID = {
 
   /** 방금 처리한 자리 — 품목@창고 키가 붙는다 */
   recent: (key: string) => `recent-${key}`,
+
+  /** 발표 가이드가 버튼을 눌렀다고 표시하는 파문 — 애니메이션이라 접근 가능한 이름이 없다 */
+  guidePress: 'guide-press',
+  /** 발표 가이드가 '이 줄을 보세요' 로 짚는 표식 — 화면 위에 뜬 판이라 이름이 없다 */
+  guideMark: 'guide-mark',
 } as const
