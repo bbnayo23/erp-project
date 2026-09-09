@@ -112,6 +112,9 @@ export const GUIDE_STEPS: GuideStep[] = [
       path: '/items',
       selector: 'items.inactiveBadge',
       demo: 'SEED',
+      // 같은 배지가 사용 중지 창고 재고 여러 줄에 나타날 수 있다 — 여기서는 그중
+      // 하나만 짚어 보여주면 되므로, 첫 줄만 강조해 포커스가 늘어지지 않게 한다.
+      focusFirstMatch: true,
       title: '사용 중지된 창고',
       body: '데이터 확인을 위해 표시는 하되, 실제 주문 준비와 발주 판단에서는 제외합니다. 데이터 자체가 사라지면 오히려 확인하기 어렵기 때문입니다.',
     },

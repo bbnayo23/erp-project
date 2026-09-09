@@ -199,14 +199,17 @@ export const GuideOverlay = () => {
        * 여러 개가 걸리는 스텝이 있다. '봐야 하는 문서 3건' 처럼 목록의 일부를 짚는
        * 자리다 — 표 전체를 강조하면 어느 줄을 보라는 것인지 말하지 못한다.
        */
-      const found = [
+      const matched = [
         ...document.querySelectorAll<HTMLElement>(`[data-tour~="${step.selector}"]`),
       ]
-      if (found.length === 0) {
+      if (matched.length === 0) {
         setRect(null)
         setMarks([])
         return
       }
+
+      // `focusFirstMatch` 스텝은 같은 앵커가 여러 줄에 우연히 걸려도 예시 하나만 짚는다
+      const found = step.focusFirstMatch ? matched.slice(0, 1) : matched
 
       const boxes = found.map((node) => node.getBoundingClientRect())
       const el = found[0] as HTMLElement

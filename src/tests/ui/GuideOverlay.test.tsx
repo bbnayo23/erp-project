@@ -145,6 +145,21 @@ describe('발표 가이드 오버레이', () => {
     )
   })
 
+  it('사용 중지 배지가 여러 줄에 걸려도 첫 줄 하나만 짚는다', async () => {
+    openAt('s4-4') // 사용 중지된 창고
+
+    // 이 버그의 전제 — 사용 중지 창고 재고가 두 줄 이상이라 앵커가 여러 개 걸린다
+    await waitFor(() => {
+      expect(
+        document.querySelectorAll('[data-tour~="items.inactiveBadge"]').length,
+      ).toBeGreaterThan(1)
+    })
+
+    // focusFirstMatch 로 첫 줄만 짚으므로, 여러 줄을 감쌀 때 뜨는 표식은 없어야 한다 —
+    // 표식이 뜨면 포커스 링이 다시 두 줄을 모두 감싸는 큰 사각형으로 늘어났다는 뜻이다
+    expect(screen.queryAllByTestId(TEST_ID.guideMark)).toHaveLength(0)
+  })
+
   it('짚을 줄이 하나면 표식 없이 링만 씌운다', async () => {
     openAt('s9-2') // 방금 들어온 데이터 — 출처 주문이 붙은 문서 한 건
 
